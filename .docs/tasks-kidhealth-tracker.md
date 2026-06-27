@@ -217,7 +217,7 @@ KidHealthTracker/
 
 ### Tasks
 
-- [ ] **M8.1** `git init` + commit + push to GitHub
+- [x] **M8.1** `git init` + commit + push to GitHub
 - [ ] **M8.2** Import project in Vercel
 - [ ] **M8.3** Set Environment Variables (Production = prod, Preview = dev)
 - [ ] **M8.4** Configure Production branch = `main`
