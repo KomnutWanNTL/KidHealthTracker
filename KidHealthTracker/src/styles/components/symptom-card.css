@@ -1,0 +1,112 @@
+.symptom-card {
+  --card-color: var(--symptom-normal);
+  --card-tint: var(--symptom-normal-tint);
+  --card-border: var(--symptom-normal-border);
+
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-xl);
+  border: 1.5px solid var(--card-border);
+  background: var(--card-tint);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--motion-mid) ease-out,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.symptom-card:hover {
+  background: color-mix(in srgb, var(--card-tint) 90%, var(--card-color) 12%);
+}
+
+.symptom-card__emoji {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.symptom-card__label {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  flex: 1;
+  min-width: 0;
+}
+
+.symptom-card__check {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  display: none;
+  letter-spacing: 0.3px;
+}
+
+.symptom-card--selected {
+  --symptom-shadow-color: color-mix(in srgb, var(--card-color) 40%, transparent);
+  background: var(--card-color);
+  border-color: var(--card-color);
+  color: #ffffff;
+  box-shadow: var(--shadow-symptom);
+  transform: scale(0.97);
+}
+
+.symptom-card--selected .symptom-card__label {
+  color: #ffffff;
+}
+
+.symptom-card--selected .symptom-card__check {
+  display: inline-block;
+}
+
+.symptom-card--selected:hover {
+  background: var(--card-color);
+}
+
+.symptom-card--full {
+  grid-column: 1 / -1;
+}
+
+.symptom-card--normal {
+  --card-color: var(--symptom-normal);
+  --card-tint: var(--symptom-normal-tint);
+  --card-border: var(--symptom-normal-border);
+}
+
+.symptom-card--runny-clear {
+  --card-color: var(--symptom-runny-clear);
+  --card-tint: var(--symptom-runny-clear-tint);
+  --card-border: var(--symptom-runny-clear-border);
+}
+
+.symptom-card--fever {
+  --card-color: var(--symptom-fever);
+  --card-tint: var(--symptom-fever-tint);
+  --card-border: var(--symptom-fever-border);
+}
+
+.symptom-card--fever-runny-clear {
+  --card-color: var(--symptom-fever-runny-clear);
+  --card-tint: var(--symptom-fever-runny-clear-tint);
+  --card-border: var(--symptom-fever-runny-clear-border);
+}
+
+.symptom-card--runny-green {
+  --card-color: var(--symptom-runny-green);
+  --card-tint: var(--symptom-runny-green-tint);
+  --card-border: var(--symptom-runny-green-border);
+}
+
+.symptom-card--fever-runny-green {
+  --card-color: var(--symptom-fever-runny-green);
+  --card-tint: var(--symptom-fever-runny-green-tint);
+  --card-border: var(--symptom-fever-runny-green-border);
+}

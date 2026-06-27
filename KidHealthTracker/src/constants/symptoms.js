@@ -1,0 +1,58 @@
+export const SYMPTOMS = [
+  {
+    code: 'NORMAL',
+    label: 'ปกติ',
+    emoji: '😊',
+    color: '#22C55E',
+    tint: '#F0FDF4',
+    border: '#86EFAC',
+    cssClass: 'normal',
+  },
+  {
+    code: 'RUNNY_CLEAR',
+    label: 'น้ำมูกใส',
+    emoji: '🤧',
+    color: '#3B82F6',
+    tint: '#EFF6FF',
+    border: '#93C5FD',
+    cssClass: 'runny-clear',
+  },
+  {
+    code: 'FEVER',
+    label: 'มีไข้',
+    emoji: '🌡️',
+    color: '#F97316',
+    tint: '#FFF7ED',
+    border: '#FED7AA',
+    cssClass: 'fever',
+  },
+  {
+    code: 'FEVER_RUNNY_CLEAR',
+    label: 'ไข้ + น้ำมูกใส',
+    emoji: '😷',
+    color: '#EF4444',
+    tint: '#FEF2F2',
+    border: '#FCA5A5',
+    cssClass: 'fever-runny-clear',
+  },
+  {
+    code: 'RUNNY_GREEN',
+    label: 'น้ำมูกเขียว',
+    emoji: '🤢',
+    color: '#84CC16',
+    tint: '#F7FEE7',
+    border: '#BEF264',
+    cssClass: 'runny-green',
+  },
+  {
+    code: 'FEVER_RUNNY_GREEN',
+    label: 'ไข้ + น้ำมูกเขียว',
+    emoji: '🤒',
+    color: '#78716C',
+    tint: '#FAFAF9',
+    border: '#D6D3D1',
+    cssClass: 'fever-runny-green',
+  },
+]
+
+export const SYMPTOM_MAP = Object.fromEntries(SYMPTOMS.map((s) => [s.code, s]))

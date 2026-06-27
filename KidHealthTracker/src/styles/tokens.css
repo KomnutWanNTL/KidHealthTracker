@@ -1,0 +1,65 @@
+:root {
+  --color-bg: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-border-subtle: #F1F5F9;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94A3B8;
+  --color-primary: #0EA5E9;
+  --color-primary-dark: #0284C7;
+  --color-danger: #EF4444;
+  --color-export: #7C3AED;
+
+  --symptom-normal: #22C55E;
+  --symptom-normal-tint: #F0FDF4;
+  --symptom-normal-border: #86EFAC;
+
+  --symptom-runny-clear: #3B82F6;
+  --symptom-runny-clear-tint: #EFF6FF;
+  --symptom-runny-clear-border: #93C5FD;
+
+  --symptom-fever: #F97316;
+  --symptom-fever-tint: #FFF7ED;
+  --symptom-fever-border: #FED7AA;
+
+  --symptom-fever-runny-clear: #EF4444;
+  --symptom-fever-runny-clear-tint: #FEF2F2;
+  --symptom-fever-runny-clear-border: #FCA5A5;
+
+  --symptom-runny-green: #84CC16;
+  --symptom-runny-green-tint: #F7FEE7;
+  --symptom-runny-green-border: #BEF264;
+
+  --symptom-fever-runny-green: #78716C;
+  --symptom-fever-runny-green-tint: #FAFAF9;
+  --symptom-fever-runny-green-border: #D6D3D1;
+
+  --symptom-no-data: #F1F5F9;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+
+  --shadow-subtle: 0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.12);
+  --shadow-symptom: 0 4px 14px var(--symptom-shadow-color, rgba(0, 0, 0, 0.1));
+
+  --motion-fast: 100ms;
+  --motion-mid: 150ms;
+  --motion-slow: 200ms;
+  --motion-fade: 300ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+}

@@ -1,0 +1,109 @@
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.calendar__head {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 6px 0;
+}
+
+.calendar__head--sunday {
+  color: var(--color-danger);
+}
+
+.calendar__cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  background: var(--symptom-no-data);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  transition: transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+}
+
+.calendar__cell--empty {
+  background: transparent;
+  visibility: hidden;
+}
+
+.calendar__cell--data {
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: var(--shadow-subtle);
+}
+
+.calendar__cell--today {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.calendar__cell--future {
+  opacity: 0.25;
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.calendar__cell--normal {
+  background: var(--symptom-normal);
+}
+
+.calendar__cell--runny-clear {
+  background: var(--symptom-runny-clear);
+}
+
+.calendar__cell--fever {
+  background: var(--symptom-fever);
+}
+
+.calendar__cell--fever-runny-clear {
+  background: var(--symptom-fever-runny-clear);
+}
+
+.calendar__cell--runny-green {
+  background: var(--symptom-runny-green);
+}
+
+.calendar__cell--fever-runny-green {
+  background: var(--symptom-fever-runny-green);
+}
+
+.calendar__cell-emoji {
+  position: absolute;
+  bottom: 3px;
+  right: 4px;
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+@media (max-width: 374px) {
+  .calendar {
+    gap: 3px;
+  }
+
+  .calendar__head {
+    font-size: 10px;
+    padding: 4px 0;
+  }
+
+  .calendar__cell {
+    font-size: 11px;
+  }
+
+  .calendar__cell-emoji {
+    font-size: 8px;
+    bottom: 1px;
+    right: 2px;
+  }
+}
