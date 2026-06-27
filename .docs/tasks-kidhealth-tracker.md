@@ -222,10 +222,7 @@ KidHealthTracker/
 - [ ] **M8.3** Set Environment Variables (Production = prod, Preview = dev)
 - [ ] **M8.4** Configure Production branch = `main`
 - [ ] **M8.5** Test: Production URL → prod Supabase / Preview URL → dev Supabase
-- [ ] **M8.6** `vercel.json` (ถ้าต้องการ SPA fallback):
-  ```json
-  { "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
-  ```
+- [x] **M8.6** `vercel.json` (SPA fallback) — สร้างแล้ว
 
 ---
 
