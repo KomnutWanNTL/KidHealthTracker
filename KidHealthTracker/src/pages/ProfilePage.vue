@@ -249,7 +249,7 @@ async function handleLogout() {
 }
 
 .profile-row__label {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--color-text-secondary);
   flex: 1;
@@ -257,7 +257,7 @@ async function handleLogout() {
 }
 
 .profile-row__value {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--color-text-primary);
   text-align: right;
@@ -267,7 +267,7 @@ async function handleLogout() {
 .profile-row__input {
   max-width: 160px;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   text-align: right;
   border-radius: var(--radius-sm);

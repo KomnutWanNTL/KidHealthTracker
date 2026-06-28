@@ -5,7 +5,7 @@
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 400;
   color: var(--color-text-primary);
   transition: border-color var(--motion-fast) ease, background-color var(--motion-fast) ease;

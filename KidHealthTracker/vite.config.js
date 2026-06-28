@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'pwa-icon.svg'],
+      includeAssets: ['favicon-v2.svg', 'pwa-icon-v2.svg'],
       manifest: {
         name: 'KidHealth Tracker',
         short_name: 'KidHealth',
@@ -24,7 +24,7 @@ export default defineConfig({
         categories: ['health', 'medical', 'kids'],
         icons: [
           {
-            src: 'pwa-icon.svg',
+            src: 'pwa-icon-v2.svg',
             sizes: 'any',
             type: 'image/svg+xml',
             purpose: 'any maskable',
