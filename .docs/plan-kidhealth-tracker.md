@@ -571,3 +571,34 @@ await supabase
 3. **Toast library:** roll your own vs `vue-toastification`. Default: **roll your own** (5-line composable).
 4. **PDF page size:** A4 portrait per spec. Confirm if landscape ever needed (e.g., wide months). Default: **A4 portrait only for v1**.
 5. **Date format display:** `DD/MM/YYYY` (Thai convention) vs ISO. Default: **DD/MM/YYYY (Buddhist year toggle optional)**.
+
+---
+
+## 8. Versioning Strategy (SemVer)
+
+ใช้ **Semantic Versioning (SemVer)** — `MAJOR.MINOR.PATCH`
+
+| ระดับ | รูปแบบ | เมื่อไรควรเพิ่ม |
+|-------|--------|----------------|
+| **MAJOR** | `X.0.0` | เปลี่ยนระบบใหญ่: เปลี่ยน data model ที่ DB, ย้าย Supabase project, redesign UI ใหม่ทั้งระบบ, เปลี่ยน auth flow, เปลี่ยนโครงสร้างหน้าเว็บครั้งใหญ่ |
+| **MINOR** | `0.X.0` | เพิ่มฟีเจอร์ใหม่: เพิ่ม symptom ใหม่, เพิ่มหน้าใหม่ใน app, เพิ่ม export format ใหม่, เพิ่มภาษา, เปลี่ยนเว็บเป็นธีมสีใหม่ |
+| **PATCH** | `0.0.X` | แก้บั๊ก: แก้ redirect ผิด, แก้ UI เล็กน้อย, ปรับ wording, ปรับ padding/สีเล็กน้อย, อัปเดต dependency, ปรับ performance |
+
+### หลักปฏิบัติ
+
+1. **เริ่มต้นที่ 1.0.0** — เมื่อ deploy ครั้งแรก (production-ready)
+2. **MINOR = 1** — ตัวแรกเป็น 1 เสมอ (1.x.x) แทน 0.x.x เพราะเป็น production แล้ว
+3. **BUILD metadata** — ไม่ใช้ (ไม่ต้องมี `+build123`)
+4. **PRE-RELEASE** — ถ้าทดสอบก่อน deploy ใช้ `-beta.1`, `-rc.1` ต่อท้าย เช่น `1.2.0-beta.1`
+5. **ก่อน commit** — อัปเดต `package.json` → rebuild → commit พร้อม tag `v1.2.3`
+
+### ตัวอย่าง
+
+| เวอร์ชัน | การเปลี่ยนแปลง |
+|----------|----------------|
+| 1.0.0 | เปิดตัว production ครั้งแรก |
+| 1.0.1 | แก้บั๊ก link ยืนยัน email |
+| 1.0.2 | แก้ UI padding, เพิ่ม loading spinner |
+| 1.1.0 | เพิ่ม export CSV, เพิ่มหน้า Settings |
+| 1.2.0 | เพิ่ม symptom RUNNY_GREEN, เพิ่มโทนสีใหม่ |
+| 2.0.0 | เปลี่ยน DB schema, redesign ใหม่ทั้งตัว |

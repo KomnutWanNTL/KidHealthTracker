@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useLogsStore } from '@/stores/logs'
 import { useProfileStore } from '@/stores/profile'
 import { useToast } from '@/composables/useToast'
+import { version } from '../../package.json'
 
 const auth = useAuthStore()
 const logs = useLogsStore()
@@ -171,6 +172,8 @@ async function handleLogout() {
         {{ loggingOut ? 'กำลังออกจากระบบ...' : 'ออกจากระบบ' }}
       </button>
     </div>
+
+    <p class="profile-version">เวอร์ชัน {{ version }}</p>
   </div>
 </template>
 
@@ -279,5 +282,13 @@ async function handleLogout() {
 
 .profile-logout {
   margin-top: var(--space-3);
+}
+
+.profile-version {
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-2);
 }
 </style>
