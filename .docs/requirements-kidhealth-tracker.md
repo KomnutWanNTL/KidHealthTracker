@@ -52,6 +52,9 @@ flowchart TD
 
 ### 2.2 Auth Flow
 
+> **สำคัญ:** `auth.init()` (getSession) ทำงาน **ก่อน** `app.use(router)` เพื่อให้ auth guard มี session state ที่ถูกต้องตั้งแต่ navigation ครั้งแรก  
+> ถ้า router ถูกติดตั้งก่อน init → guard จะเห็น `loading: true` → ปล่อยผ่านทั้งหมด → user ไปถึง `/dashboard` โดยไม่ต้อง login
+
 ```mermaid
 sequenceDiagram
     actor User
@@ -59,13 +62,20 @@ sequenceDiagram
     participant Supabase as Supabase Auth
 
     User->>Vue: เปิดแอพ
+    Vue->>Vue: auth.init() → getSession()
     Vue->>Supabase: getSession()
     alt มี session
         Supabase-->>Vue: session valid
+        Vue->>Vue: ตั้งค่า session, loading = false
+        Vue->>Vue: app.use(router) → เริ่ม navigation
+        Note over Vue: guard เห็น session → allow
         Vue-->>User: redirect /dashboard
     else ไม่มี session
         Supabase-->>Vue: null
-        Vue-->>User: redirect /login
+        Vue->>Vue: ตั้งค่า session=null, loading = false
+        Vue->>Vue: app.use(router) → เริ่ม navigation
+        Note over Vue: root / → redirect /login
+        Vue-->>User: แสดงหน้า /login
     end
 
     User->>Vue: กรอก email + password
@@ -81,6 +91,9 @@ sequenceDiagram
 
 ### 2.3 Register Flow
 
+> **หมายเหตุ:** ส่ง `emailRedirectTo` = `window.location.origin + /login` ใน `options` ของ `signUp()`  
+> เพื่อให้หลังยืนยัน email แล้ว Supabase redirect ไปหน้า Login (ไม่ใช่ `localhost` ตามค่าเริ่มต้นของ SITE_URL)
+
 ```mermaid
 sequenceDiagram
     actor User
@@ -89,15 +102,19 @@ sequenceDiagram
     participant Email as Email Provider
 
     User->>Vue: กรอก email + password + confirm password
-    Vue->>Vue: validate (password match, length)
-    Vue->>Supabase: signUp({ email, password })
-    Supabase-->>Email: ส่ง confirmation email
+    Vue->>Vue: validate (password match, length, not empty)
+    Vue->>Vue: สร้าง redirectTo = `${origin}/login`
+    Vue->>Supabase: signUp({ email, password, options: { emailRedirectTo, data: { first_name, last_name } } })
+    Supabase-->>Email: ส่ง confirmation email (link → domain/login)
     Supabase-->>Vue: { user, session: null }
-    Vue-->>User: แสดง "กรุณายืนยัน email"
+    Vue-->>User: แสดง "กรุณายืนยัน email" + ปุ่มกลับหน้า Login
 
     User->>Email: คลิก link ยืนยัน
     Email->>Supabase: confirm token
-    Supabase-->>Vue: onAuthStateChange → SIGNED_IN
+    Note over User,Email: Supabase redirect → /login (ตาม emailRedirectTo)
+    User->>Vue: กลับไปหน้า Login และกรอกรหัสผ่าน
+    Vue->>Supabase: signInWithPassword()
+    Supabase-->>Vue: session token
     Vue-->>User: redirect /dashboard
 ```
 
@@ -171,7 +188,8 @@ flowchart LR
 - ส่ง first_name + last_name ไปใน `options.data` (user_metadata) ตอน signUp
 - Supabase ส่ง confirmation email อัตโนมัติ (ต้องเปิด "Confirm email" ใน Supabase Dashboard)
 - password ต้อง match และยาว ≥ 8 ตัว ก่อน call API
-- หลังยืนยัน email แล้ว redirect `/dashboard`
+- ส่ง `options.emailRedirectTo = ${window.location.origin}/login` เพื่อให้ link ยืนยัน redirect ไปหน้า Login (ป้องกันการ redirect ไป `localhost` ผิดพลาด)
+- หลังยืนยัน email แล้ว user ต้องกลับมาที่ Login และกรอกรหัสผ่านเพื่อเข้าสู่ระบบ
 - หลัง login ครั้งแรก ระบบจะสร้าง record ในตาราง `profiles` อัตโนมัติ (ถ้ายังไม่มี) โดยดึง first_name, last_name จาก user_metadata
 
 ---
@@ -459,58 +477,104 @@ VITE_APP_ENV=production
 | Layer | Technology |
 |---|---|
 | Frontend | Vue 3 (Composition API) + Vite |
-| UI | Tailwind CSS หรือ PrimeVue |
+| UI | Tailwind CSS |
 | State | Pinia |
 | Backend / Auth / DB | Supabase (Auth + PostgreSQL) |
 | Hosting | Vercel |
-| Router | Vue Router 4 |
+| Router | Vue Router 5 |
 | PDF Export | jsPDF + html2canvas |
+| PWA | vite-plugin-pwa (Workbox) |
 
 ---
 
 ## 10. Project Structure
 
 ```
+public/
+├── favicon.svg                # favicon
+├── icons.svg                  # social icon sprite
+└── pwa-icon.svg               # PWA home screen icon (512×512 SVG)
 src/
 ├── assets/
 ├── components/
-│   ├── SymptomCard.vue        # ปุ่มเลือกอาการ (รับ color + label)
+│   ├── BottomNav.vue          # Bottom navigation (Dashboard / Summary / Profile)
 │   ├── CalendarGrid.vue       # ปฏิทิน summary (ref สำหรับ export)
-│   └── MonthPicker.vue        # ตัวเลื่อนเดือน
+│   ├── Legend.vue             # Legend + นับจำนวนวัน
+│   ├── MonthPicker.vue        # ตัวเลื่อนเดือน
+│   ├── SymptomCard.vue        # ปุ่มเลือกอาการ (รับ color + label)
+│   └── ToastContainer.vue     # Toast แจ้งเตือน
 ├── composables/
-│   └── useExportPdf.js        # html2canvas + jsPDF
+│   ├── useExportPdf.js        # html2canvas + jsPDF
+│   └── useToast.js            # Global toast state
+├── constants/
+│   └── symptoms.js            # Color map + label
+├── lib/
+│   └── supabase.js            # Supabase client
 ├── pages/
 │   ├── LoginPage.vue
 │   ├── RegisterPage.vue
+│   ├── VerifyEmailPage.vue    # หน้ารอ confirm email
 │   ├── DashboardPage.vue
 │   ├── SummaryPage.vue
 │   └── ProfilePage.vue        # โปรไฟล์ + แก้ไขชื่อ/วันเกิดลูก
-├── stores/
-│   ├── auth.js                # Pinia: session
-│   ├── logs.js                # Pinia: daily logs
-│   └── profile.js             # Pinia: profile (first_name, last_name, child_name, child_birthday)
-├── lib/
-│   └── supabase.js            # Supabase client
 ├── router/
 │   └── index.js               # Vue Router + auth guard
-└── constants/
-    └── symptoms.js            # Color map + label
+├── stores/
+│   ├── auth.js                # Pinia: session, user, loading
+│   ├── logs.js                # Pinia: daily logs CRUD
+│   └── profile.js             # Pinia: profile (child_name, child_birthday)
+├── styles/
+│   ├── tokens.css             # Design tokens (colors, spacing, shadows)
+│   ├── typography.css         # Font sizes, weights, heading classes
+│   ├── base.css               # Reset, body, scroll, focus styles
+│   └── components/            # Component-level CSS
+│       ├── button.css
+│       ├── input.css
+│       ├── symptom-card.css
+│       ├── calendar.css
+│       ├── bottom-nav.css
+│       └── toast.css
+├── App.vue
+├── main.js
+└── style.css                  # @import entry for all CSS
 ```
 
 ---
 
 ## 11. Routes & Auth Guard
 
-| Path | Component | Auth Required |
-|---|---|---|
-| `/login` | LoginPage | ❌ |
-| `/register` | RegisterPage | ❌ |
-| `/dashboard` | DashboardPage | ✅ |
-| `/summary` | SummaryPage | ✅ |
-| `/profile` | ProfilePage | ✅ |
+| Path | Component | Auth Required | Notes |
+|---|---|---|---|
+| `/login` | LoginPage | ❌ | |
+| `/register` | RegisterPage | ❌ | |
+| `/verify` | VerifyEmailPage | ❌ | หลังสมัคร, แสดง "กรุณาตรวจสอบอีเมล" |
+| `/` | — | — | redirect → `/login` |
+| `/dashboard` | DashboardPage | ✅ | |
+| `/summary` | SummaryPage | ✅ | |
+| `/profile` | ProfilePage | ✅ | |
+| `/:pathMatch(.*)*` | — | — | catch-all redirect → `/login` |
 
-Auth guard: ถ้าไม่มี session → redirect `/login`  
-ถ้ามี session แล้วเข้า `/login` หรือ `/register` → redirect `/dashboard`
+### Auth Guard Logic (`router.beforeEach`)
+
+```js
+if (auth.loading) return                    // ← ไม่ redirect (loading splash)
+if (to.meta.requiresAuth && !auth.session) return '/login'
+if (to.path === '/login' && auth.session) return '/dashboard'
+if (to.path === '/register' && auth.session) return '/dashboard'
+```
+
+### Init Order (สำคัญ!)
+
+```js
+// main.js — bootstrap
+app.use(pinia)
+await useAuthStore().init()     // 1. auth init ก่อน
+app.use(router)                 // 2. router navigation หลัง auth init
+app.mount('#app')
+```
+
+> **เหตุผล:** `app.use(router)` เริ่ม navigation ทันที ถ้า `init()` ยังไม่เสร็จ → `loading = true` → guard ปล่อยผ่านทั้งหมด → user ถึง Dashboard โดยไม่ต้อง login  
+> แก้โดยย้าย `app.use(router)` ไว้หลัง `await useAuthStore().init()`
 
 ---
 
@@ -529,7 +593,36 @@ export const SYMPTOMS = [
 
 ---
 
-## 13. Out of Scope (v1)
+## 13. PWA — Progressive Web App
+
+แอพรองรับการติดตั้งบน Home Screen ของมือถือ (Add to Home Screen)  
+ผ่าน **manifest.json** + **Service Worker (Workbox)** ที่สร้างโดย `vite-plugin-pwa`
+
+### คุณสมบัติ
+
+| Feature | รายละเอียด |
+|---|---|
+| Manifest | name: `KidHealth Tracker`, short_name: `KidHealth`, display: `standalone` |
+| Start URL | `/dashboard` (หลังจาก login) |
+| Theme Color | `#F8FAFC` |
+| Icon | SVG 512×512 (purple diamond on white bg) |
+| Service Worker | auto-generated by `vite-plugin-pwa` |
+| Caching | App shell (JS, CSS, HTML) + Google Fonts (CacheFirst) |
+| iOS Meta | `apple-mobile-web-app-capable`, `apple-touch-icon` |
+
+### ไฟล์ที่เกี่ยวข้อง
+
+| File | Role |
+|---|---|
+| `public/pwa-icon.svg` | 512×512 SVG icon สำหรับ manifest |
+| `vite.config.js` | `VitePWA` plugin config (manifest + Workbox) |
+| `index.html` | `<link rel="manifest">`, `<meta>` tags for iOS/Android |
+
+> Browser จะแสดง banner "Add to Home Screen" เมื่อตรงเงื่อนไข: HTTPS, manifest.json valid, service worker registered, มี icon 192px+
+
+---
+
+## 14. Out of Scope (v1)
 
 - ❌ รองรับหลายโปรไฟล์เด็ก
 - ❌ Push notification

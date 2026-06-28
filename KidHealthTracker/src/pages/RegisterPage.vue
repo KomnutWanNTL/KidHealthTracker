@@ -30,7 +30,9 @@ async function handleRegister() {
     return
   }
   loading.value = true
+  const redirectTo = `${window.location.origin}/login`
   const { error: err } = await auth.signUp(email.value, password.value, {
+    emailRedirectTo: redirectTo,
     data: { first_name: firstName.value, last_name: lastName.value },
   })
   if (err) {

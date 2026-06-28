@@ -1,7 +1,7 @@
 # ✅ KidHealth Tracker — Task Checklist
 
 > Source: `requirements-kidhealth-tracker.md` · `plan-kidhealth-tracker.md`
-> Stack: Vue 3 (Composition API) · Vite · Supabase · Vercel · Tailwind · Pinia · jsPDF + html2canvas
+> Stack: Vue 3 (Composition API) · Vite · Supabase · Vercel · Tailwind · Pinia · jsPDF + html2canvas · vite-plugin-pwa
 
 ---
 
@@ -13,49 +13,64 @@
 
 ---
 
-## 📁 File Structure (เป้าหมาย)
+## 📁 File Structure (Actual)
 
 ```
 KidHealthTracker/
-├── .env.development      # dev keys (placeholder)
-├── .env.production       # prod keys (gitignored)
-├── .env.local            # override (gitignored)
+├── .env.development          # dev keys
+├── .env.production           # prod keys (gitignored)
+├── .env.local                # override (gitignored)
 ├── .gitignore
-├── index.html
+├── index.html                # PWA meta tags + manifest link
 ├── package.json
-├── postcss.config.js
-├── tailwind.config.js
-├── vite.config.js
-├── vercel.json           (optional)
+├── vite.config.js            # Vue + Tailwind + VitePWA plugins
+├── vercel.json               # SPA fallback
+├── public/
+│   ├── favicon.svg
+│   ├── icons.svg
+│   └── pwa-icon.svg          # PWA home screen icon
 └── src/
-    ├── main.js
-    ├── App.vue
-    ├── assets/main.css
+    ├── main.js               # bootstrap: auth.init() → router → mount
+    ├── App.vue               # loading splash + router-view + BottomNav
+    ├── style.css             # CSS entry
+    ├── lib/
+    │   └── supabase.js
+    ├── router/
+    │   └── index.js          # routes + auth guard beforeEach
+    ├── stores/
+    │   ├── auth.js
+    │   ├── logs.js
+    │   └── profile.js
+    ├── pages/
+    │   ├── LoginPage.vue
+    │   ├── RegisterPage.vue
+    │   ├── VerifyEmailPage.vue
+    │   ├── DashboardPage.vue
+    │   ├── SummaryPage.vue
+    │   └── ProfilePage.vue
     ├── components/
-    │   ├── SymptomCard.vue
+    │   ├── BottomNav.vue
     │   ├── CalendarGrid.vue
-    │   ├── MonthPicker.vue
     │   ├── Legend.vue
-    │   ├── ToastContainer.vue
-    │   └── AppHeader.vue
+    │   ├── MonthPicker.vue
+    │   ├── SymptomCard.vue
+    │   └── ToastContainer.vue
     ├── composables/
     │   ├── useExportPdf.js
     │   └── useToast.js
     ├── constants/
     │   └── symptoms.js
-    ├── lib/
-    │   └── supabase.js
-    ├── pages/
-    │   ├── LoginPage.vue
-    │   ├── RegisterPage.vue
-    │   ├── DashboardPage.vue
-    │   ├── SummaryPage.vue
-    │   └── VerifyEmailPage.vue
-    ├── router/
-    │   └── index.js
-    └── stores/
-        ├── auth.js
-        └── logs.js
+    └── styles/
+        ├── tokens.css
+        ├── typography.css
+        ├── base.css
+        └── components/
+            ├── button.css
+            ├── input.css
+            ├── symptom-card.css
+            ├── calendar.css
+            ├── bottom-nav.css
+            └── toast.css
 ```
 
 ---
@@ -104,10 +119,16 @@ KidHealthTracker/
 
 - [x] **M2.1** `src/stores/auth.js` (Pinia) — session, user, loading, init, signIn, signUp, signOut, onAuthChange
 - [x] **M2.2** `src/router/index.js` — routes + auth guard (redirect logic)
+  - Root `/` now redirects to `/login` (not `/dashboard`)  
+  - auth guard `beforeEach` checks `loading` + `requiresAuth` + redirect for authenticated users on `/login`/`/register`
 - [x] **M2.3** `src/pages/LoginPage.vue` — form + error + redirect
 - [x] **M2.4** `src/pages/RegisterPage.vue` — form + validation + verify message
+  - **Bug fix:** เพิ่ม `options.emailRedirectTo = ${window.location.origin}/login`  
+    เพื่อให้ confirmation link redirect ไปหน้า Login (ไม่ใช่ localhost)
 - [x] **M2.5** `src/pages/VerifyEmailPage.vue` — รอ confirm + redirect
-- [x] **M2.6** `App.vue` — `auth.init()` ก่อน mount
+- [x] **M2.6** `main.js` — `auth.init()` ก่อน `app.use(router)` และ `app.mount()`
+  - **Bug fix:** ย้าย `app.use(router)` ไว้หลัง `await useAuthStore().init()`  
+    ป้องกัน navigation เริ่มก่อน auth init → guard เห็น `loading: true` → ปล่อยผ่าน → user ถึง Dashboard โดยไม่ login
 - [x] **M2.7** Logout button — `AppHeader.vue` ใช้ใน Dashboard + Summary แล้ว
 - [x] **M2.8** Test: register → email → confirm → dashboard
 
@@ -211,22 +232,39 @@ KidHealthTracker/
 
 ---
 
-## 🎯 Milestone 8 — Deploy to Vercel
+## 🎯 Milestone 8 — Bug Fixes & PWA Support
 
 **Est:** 0.5 day
 
 ### Tasks
 
-- [x] **M8.1** `git init` + commit + push to GitHub
-- [ ] **M8.2** Import project in Vercel
-- [ ] **M8.3** Set Environment Variables (Production = prod, Preview = dev)
-- [ ] **M8.4** Configure Production branch = `main`
-- [ ] **M8.5** Test: Production URL → prod Supabase / Preview URL → dev Supabase
-- [x] **M8.6** `vercel.json` (SPA fallback) — สร้างแล้ว
+- [x] **M8.1** แก้ Bug: root `/` redirect `/dashboard` → เปลี่ยนเป็น `/login`
+- [x] **M8.2** แก้ Bug: `app.use(router)` ก่อน auth init → ย้าย `app.use(router)` หลัง `await useAuthStore().init()` ใน `main.js`
+- [x] **M8.3** แก้ Bug: confirmation email redirect ไป `localhost` → เพิ่ม `options.emailRedirectTo` ใน `RegisterPage.vue`
+- [x] **M8.4** ติดตั้ง `vite-plugin-pwa` (npm)
+- [x] **M8.5** ตั้งค่า `VitePWA` plugin ใน `vite.config.js` — manifest + Workbox service worker
+- [x] **M8.6** สร้าง `public/pwa-icon.svg` — 512×512 SVG icon สำหรับ PWA
+- [x] **M8.7** อัปเดต `index.html` — manifest link, apple-touch-icon, mobile-web-app meta tags
+- [x] **M8.8** Verify: `npm run build` → PWA assets generated (`sw.js`, `manifest.webmanifest`)
 
 ---
 
-## 🎯 Milestone 9 — QA / UAT
+## 🎯 Milestone 9 — Deploy to Vercel
+
+**Est:** 0.5 day
+
+### Tasks
+
+- [x] **M9.1** `git init` + commit + push to GitHub
+- [ ] **M9.2** Import project in Vercel
+- [ ] **M9.3** Set Environment Variables (Production = prod, Preview = dev)
+- [ ] **M9.4** Configure Production branch = `main`
+- [ ] **M9.5** Test: Production URL → prod Supabase / Preview URL → dev Supabase
+- [x] **M9.6** `vercel.json` (SPA fallback) — สร้างแล้ว
+
+---
+
+## 🎯 Milestone 10 — QA / UAT
 
 **Est:** 1.5 days
 
@@ -248,6 +286,10 @@ KidHealthTracker/
 - [ ] **T14** Register with first_name + last_name → profile auto-created on first login
 - [ ] **T15** Edit child_name + child_birthday → save → reload → values persist
 - [ ] **T16** Age auto-calculated correctly from child_birthday
+- [ ] **T17** Open root `/` when not logged in → redirect `/login` (not Dashboard)
+- [ ] **T18** Register → receive email → click link → redirect `/login` (not localhost)
+- [ ] **T19** PWA: Chrome DevTools → Manifest valid, Service Worker registered
+- [ ] **T20** PWA: iOS Safari → "Add to Home Screen" shows app icon + name
 
 ---
 
@@ -271,3 +313,8 @@ KidHealthTracker/
 - Tailwind ใช้ v4 (approach: `@import "tailwindcss"` + `@tailwindcss/vite` plugin)
 - Date format: Thai locale / DD/MM/2569
 - **M7 (Profile):** ต้องรัน SQL migration เพิ่ม `profiles` table ก่อน (ดู `supabase-setup-guide.md`)
+- **Bug Fixes (M8):**
+  - Root `/` redirect → `/login` (เดิม `/dashboard`) เพื่อป้องกัน user ไม่ได้ login แล้วเห็น Dashboard
+  - `app.use(router)` ต้องอยู่หลัง `await useAuthStore().init()` — ถ้าสลับกัน guard จะเห็น `loading: true` และปล่อยทุก navigation ผ่าน
+  - `emailRedirectTo` ต้องส่งไปกับ `signUp()` เพื่อให้ email confirmation กลับมาที่ Login page
+- **PWA (M8):** ใช้ `vite-plugin-pwa` สร้าง service worker + manifest อัตโนมัติตอน build
