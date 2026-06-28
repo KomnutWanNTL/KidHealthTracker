@@ -10,8 +10,20 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async init() {
       const { data } = await supabase.auth.getSession()
-      this.session = data.session
-      this.user = data.session?.user ?? null
+      if (data.session) {
+        const { data: userData, error } = await supabase.auth.getUser()
+        if (error || !userData?.user) {
+          await supabase.auth.signOut()
+          this.session = null
+          this.user = null
+        } else {
+          this.session = data.session
+          this.user = userData.user
+        }
+      } else {
+        this.session = null
+        this.user = null
+      }
       this.loading = false
       supabase.auth.onAuthStateChange((_e, session) => {
         this.session = session
