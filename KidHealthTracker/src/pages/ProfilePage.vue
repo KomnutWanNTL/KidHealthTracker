@@ -21,6 +21,16 @@ const childBirthday = ref('')
 const childGender = ref('')
 const firstName = ref('')
 const lastName = ref('')
+const uploading = ref(false)
+const fileInput = ref(null)
+
+const avatarUrl = computed(() => profileStore.profile?.avatar_url || null)
+
+const avatarFallback = computed(() => {
+  if (childGender.value === 'male') return '👦'
+  if (childGender.value === 'female') return '👧'
+  return '👩'
+})
 
 const fullName = computed(() => {
   if (firstName.value && lastName.value) return `${firstName.value} ${lastName.value}`
@@ -98,6 +108,71 @@ async function handleLogout() {
     loggingOut.value = false
   }
 }
+
+function triggerFileInput() {
+  fileInput.value?.click()
+}
+
+function compressImage(file, maxSize) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      let width = img.naturalWidth
+      let height = img.naturalHeight
+
+      function tryQuality(quality) {
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob((blob) => {
+          if (!blob) { reject(new Error('ไม่สามารถบีบอัดรูปได้')); return }
+          if (blob.size <= maxSize) {
+            resolve(blob)
+          } else if (quality > 0.4) {
+            tryQuality(quality - 0.1)
+          } else {
+            width = Math.round(width * 0.85)
+            height = Math.round(height * 0.85)
+            if (width >= 100 && height >= 100) {
+              tryQuality(0.92)
+            } else {
+              reject(new Error('ไม่สามารถบีบอัดรูปให้ตํากว่า 700KB ได้'))
+            }
+          }
+        }, 'image/jpeg', quality)
+      }
+
+      tryQuality(0.92)
+    }
+    img.onerror = () => reject(new Error('โหลดรูปไม่สำเร็จ'))
+    const reader = new FileReader()
+    reader.onload = (e) => { img.src = e.target.result }
+    reader.onerror = () => reject(new Error('อ่านไฟล์ไม่สำเร็จ'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function handleFileChange(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  uploading.value = true
+  try {
+    const fileToUpload = file.size > 700 * 1024
+      ? await compressImage(file, 700 * 1024)
+      : file
+    await profileStore.uploadAvatar(fileToUpload)
+    success('อัปโหลดรูปโปรไฟล์เรียบร้อย ✓')
+  } catch (e) {
+    showError(e.message || 'อัปโหลดไม่สำเร็จ')
+  } finally {
+    uploading.value = false
+    event.target.value = ''
+  }
+}
+
 </script>
 
 <template>
@@ -111,7 +186,16 @@ async function handleLogout() {
 
     <section class="profile-card">
       <div class="profile-card__header">
-        <div class="profile-avatar" aria-hidden="true">👩</div>
+        <div class="profile-avatar-wrap" @click="triggerFileInput" role="button" tabindex="0" @keydown.enter="triggerFileInput" :title="uploading ? 'กำลังอัปโหลด...' : 'เปลี่ยนรูปโปรไฟล์'">
+          <img v-if="avatarUrl" :src="avatarUrl" alt="รูปโปรไฟล์" class="avatar-img" />
+          <span v-else class="avatar-fallback" aria-hidden="true">{{ avatarFallback }}</span>
+          <div class="avatar-overlay">
+            <span v-if="uploading" class="avatar-overlay__text">กำลังอัปโหลด...</span>
+            <span v-else class="avatar-overlay__text">เปลี่ยน</span>
+          </div>
+          <div v-if="uploading" class="avatar-spinner"></div>
+        </div>
+        <input ref="fileInput" type="file" accept="image/jpeg,image/png" hidden @change="handleFileChange" />
         <div>
           <p class="profile-card__name">{{ fullName }}</p>
           <p class="profile-card__email">{{ email || '—' }}</p>
@@ -219,16 +303,62 @@ async function handleLogout() {
   gap: var(--space-4);
 }
 
-.profile-avatar {
-  width: 56px;
-  height: 56px;
+.profile-avatar-wrap {
+  width: 80px;
+  height: 80px;
   border-radius: var(--radius-full);
   background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 36px;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.avatar-fallback {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--motion-mid) ease;
+  border-radius: var(--radius-full);
+}
+
+.profile-avatar-wrap:hover .avatar-overlay,
+.profile-avatar-wrap:focus-visible .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-overlay__text {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.avatar-spinner {
+  position: absolute;
+  inset: 3px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .profile-card__name {

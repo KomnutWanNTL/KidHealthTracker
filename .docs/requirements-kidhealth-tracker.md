@@ -290,12 +290,12 @@ flowchart LR
 - child_birthday → อายุจะอัปเดตอัตโนมัติที่ frontend (คำนวณจากวันที่ปัจจุบัน เทียบกับ child_birthday)
 - แสดงอายุเป็น "X ปี Y เดือน Z วัน" หรือ "X ปี Y เดือน" หรือ "X เดือน" (ถ้าอายุ < 2 ปี) หรือ "X วัน" (ถ้าอายุ < 1 เดือน)
 
-**Avatar Upload (v1.3.0):**
+**Avatar Upload (v1.4.0):**
 - ผู้ใช้สามารถอัปโหลดรูปโปรไฟล์ได้จากหน้า Profile (คลิกที่ avatar หรือปุ่มเปลี่ยนรูป)
 - รูปจะถูกอัปโหลดไปยัง Supabase Storage bucket `avatars`
-- Path ใน Storage: `{user_id}/{timestamp}.{ext}`
-- ขนาดไฟล์สูงสุด 2MB, รองรับไฟล์ .jpg, .jpeg, .png
-- รูปจะถูก crop เป็นสี่เหลี่ยมจตุรัส (1:1) ที่ client ก่อน upload
+- Path ใน Storage: `{user_id}/avatar.{ext}` (ไฟล์ใหม่ overwrite ไฟล์เก่าอัตโนมัติด้วย `upsert: true`)
+- Client-side auto-compress: ถ้าไฟล์ >700KB จะลด quality + resize ผ่าน `<canvas>` จนไฟล์ ≤700KB
+- รองรับไฟล์ .jpg, .jpeg, .png (file picker จำกัด) แต่ output เป็น JPEG เสมอ
 - หลัง upload สำเร็จ `avatar_url` ในตาราง `profiles` จะถูกอัปเดต
 - Header Dashboard แสดง avatar ที่ upload แทน icon emoji (ถ้ามี) หรือ fallback เป็น 👶/👦/👧 ตาม child_gender
 - หน้า Profile แสดง avatar ที่ upload ใน profile card แทน 👩 hardcoded
@@ -314,7 +314,7 @@ flowchart LR
 | `child_name` | `text` | ชื่อลูก (แก้ไขที่หน้า Profile) |
 | `child_birthday` | `date` | วันเกิดลูก (แก้ไขที่หน้า Profile, nullable) |
 | `child_gender` | `text` | เพศลูก ('male'/'female', nullable) — ใช้กำหนด icon ที่ header dashboard |
-| `avatar_url` | `text` | URL รูปโปรไฟล์ใน Supabase Storage (nullable, v1.3.0) |
+| `avatar_url` | `text` | URL รูปโปรไฟล์ใน Supabase Storage (nullable, v1.4.0) |
 | `created_at` | `timestamptz` | เวลาสร้าง |
 | `updated_at` | `timestamptz` | เวลาแก้ไขล่าสุด |
 
@@ -454,7 +454,7 @@ CREATE POLICY "Users can manage own logs"
 
 ---
 
-## 8. Supabase Storage — Avatar Upload (v1.3.0)
+## 8. Supabase Storage — Avatar Upload (v1.4.0)
 
 ### Bucket: `avatars`
 

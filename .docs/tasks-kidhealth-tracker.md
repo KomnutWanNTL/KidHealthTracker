@@ -419,15 +419,15 @@ icons: [
 
 ---
 
-## 🎯 Milestone 12 — Avatar Upload (v1.3.0)
+## 🎯 Milestone 12 — Avatar Upload (v1.4.0) 🚧
 
 **Est:** 1 day
 
 ### 12.1 Database & Storage
 
-- [ ] **M12.1** เพิ่ม column `avatar_url text` ในตาราง `profiles` (nullable) — รัน migration ใน dev project ก่อน
-- [ ] **M12.2** สร้าง bucket `avatars` ใน Supabase Storage Dashboard (public bucket, max 2MB, allow image/jpeg + image/png)
-- [ ] **M12.3** ตั้ง RLS policies สำหรับ bucket `avatars`:
+- [x] **M12.1** เพิ่ม column `avatar_url text` ในตาราง `profiles` (nullable) — รัน migration ใน dev project ก่อน
+- [x] **M12.2** สร้าง bucket `avatars` ใน Supabase Storage Dashboard (public bucket, max 2MB, allow image/jpeg + image/png)
+- [x] **M12.3** ตั้ง RLS policies สำหรับ bucket `avatars`:
   - INSERT: user สามารถอัปโหลดไปยัง folder `{auth.uid()}/` เท่านั้น
   - SELECT: authenticated user สามารถอ่านรูปของตัวเองได้
   - UPDATE: user สามารถอัปเดตรูปใน folder ตัวเอง
@@ -435,38 +435,38 @@ icons: [
 
 ### 12.2 Profile Store
 
-- [ ] **M12.4** เพิ่ม action `uploadAvatar(file)` ใน `src/stores/profile.js`:
+- [x] **M12.4** เพิ่ม action `uploadAvatar(file)` ใน `src/stores/profile.js`:
   - ลบรูปเก่า (ถ้ามี `avatar_url`) → upload ไฟล์ใหม่ไปที่ `storage/avatars/{user_id}/{timestamp}.{ext}`
   - ได้ public URL → update `profiles.avatar_url`
   - return URL
-- [ ] **M12.5** เพิ่ม action `deleteAvatar()`:
+- [x] **M12.5** เพิ่ม action `deleteAvatar()`:
   - ลบไฟล์จาก Storage
   - set `profiles.avatar_url = null`
 
 ### 12.3 Profile Page
 
-- [ ] **M12.6** แก้ไข `ProfilePage.vue`:
+- [x] **M12.6** แก้ไข `ProfilePage.vue`:
   - Avatar section ใน profile card header: แสดง `<img>` จาก `profile.avatar_url` (ถ้ามี) หรือ fallback emoji (👩)
   - ปุ่ม/overlay "เปลี่ยนรูปโปรไฟล์" ที่คลิก avatar
   - `<input type="file" accept="image/jpeg,image/png" hidden>` ที่ถูก trigger โดยคลิก avatar
   - ขนาด avatar ~80px ใน profile card, `object-fit: cover`, `border-radius: 50%`
-- [ ] **M12.7** เพิ่ม validation:
-  - ขนาดไฟล์ ≤ 2MB → ถ้าเกินแสดง toast error "ไฟล์มีขนาดใหญ่เกิน 2MB"
+- [x] **M12.7** เพิ่ม validation:
+  - ขนาดไฟล์ ≤ 700KB → ถ้าเกินจะ auto-compress ผ่าน `<canvas>` (ลด quality + resize) จน ≤700KB
   - type ต้องเป็น image/jpeg หรือ image/png → file picker จำกัดไว้แล้ว
-- [ ] **M12.8** ขณะ upload: แสดง loading state ("กำลังอัปโหลด...")
-- [ ] **M12.9** อัปโหลดเสร็จ → preview รูปใหม่ทันที + toast success
-- [ ] **M12.10** (Optional) ปุ่มลบรูปโปรไฟล์
+- [x] **M12.8** ขณะ upload: แสดง loading state ("กำลังอัปโหลด...")
+- [x] **M12.9** อัปโหลดเสร็จ → preview รูปใหม่ทันที + toast success
+- [x] **M12.10** (Optional) ปุ่มลบรูปโปรไฟล์ *(ไม่ใช้ — upload ใช้ upsert ทับของเก่าอัตโนมัติ)*
 
 ### 12.4 Dashboard Header
 
-- [ ] **M12.11** แก้ไข `DashboardPage.vue`:
+- [x] **M12.11** แก้ไข `DashboardPage.vue`:
   - Avatar link แสดง `<img :src="profileStore.profile?.avatar_url" ...>` ถ้ามี `avatar_url`
   - Fallback: icon emoji ตาม child_gender (👦/👧/👶) หรือ 👩 ถ้าไม่มี gender
-- [ ] **M12.12** Style: `width: 44px; height: 44px; border-radius: 50%; object-fit: cover;`
+- [x] **M12.12** Style: `width: 44px; height: 44px; border-radius: 50%; object-fit: cover;`
 
 ### 12.5 General Styles
 
-- [ ] **M12.13** เพิ่ม CSS สำหรับ avatar image (base.css หรือ component):
+- [x] **M12.13** เพิ่ม CSS สำหรับ avatar image (base.css หรือ component):
   ```css
   .avatar-img {
     width: 100%;
@@ -475,7 +475,7 @@ icons: [
     object-fit: cover;
   }
   ```
-- [ ] **M12.14** Profile card avatar: ขนาดใหญ่ขึ้น ~80px, object-fit cover, responsive
+- [x] **M12.14** Profile card avatar: ขนาดใหญ่ขึ้น ~80px, object-fit cover, responsive
 
 ---
 
@@ -494,7 +494,7 @@ icons: [
 - **M11 (PDF fix v1.3.0):** เปลี่ยนจาก pagination → scale proportionally เพื่อให้ทุกอย่างอยู่ใน A4 portrait หน้าเดียว
   - `useExportPdf.js`: ถ้า imgHeight > pageHeight → recalculate width ให้พอดี
   - คง `scale: 2` → quality ยังดี แต่ scaled down proportionally
-- **M12 (Avatar Upload v1.3.0):**
+- **M12 (Avatar Upload v1.4.0):**
   - ต้องสร้าง bucket `avatars` ใน Supabase Storage ก่อน
   - Column `avatar_url` ใน `profiles` table ต้องมีก่อน deploy
   - RLS policies สำหรับ Storage ต้อง set ให้ถูกต้อง

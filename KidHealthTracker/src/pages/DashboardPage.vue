@@ -78,7 +78,10 @@ watch(selectedDate, loadLog)
         <span class="eyebrow">บันทึกอาการ</span>
         <h1 class="t-page-heading">สวัสดี {{ greetingName }} 👋</h1>
       </div>
-      <router-link to="/profile" class="avatar" aria-label="โปรไฟล์">{{ childIcon }}</router-link>
+      <router-link to="/profile" class="avatar" aria-label="โปรไฟล์">
+        <img v-if="profileStore.profile?.avatar_url" :src="profileStore.profile.avatar_url" alt="" class="avatar-img" />
+        <span v-else>{{ childIcon }}</span>
+      </router-link>
     </header>
 
     <section class="card date-card">

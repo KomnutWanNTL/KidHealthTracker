@@ -287,7 +287,7 @@ Tasks:
 
 ---
 
-### Phase 7b — Avatar Upload (M7b, v1.3.0)
+### Phase 7b — Avatar Upload (M7b, v1.4.0)
 **Goal:** User can upload profile picture (avatar) and see it on Header + Profile page.
 
 Tasks:
@@ -652,4 +652,5 @@ await supabase
 | 1.0.2 | แก้ UI padding, เพิ่ม loading spinner |
 | 1.1.0 | เพิ่ม export CSV, เพิ่มหน้า Settings |
 | 1.2.0 | เพิ่ม symptom RUNNY_GREEN, child_gender, greeting, PWA icon fix, date validation |
-| 1.3.0 | เพิ่มอัปโหลดรูปโปรไฟล์, แก้ PDF export ตกหน้า 2 | |
+| 1.3.0 | แก้ PDF export ตกหน้า 2 | |
+| 1.4.0 | เพิ่มอัปโหลดรูปโปรไฟล์ | |

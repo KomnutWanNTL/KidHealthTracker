@@ -2,10 +2,13 @@ import { defineStore } from 'pinia'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 
+const STORAGE_BUCKET = 'avatars'
+
 export const useProfileStore = defineStore('profile', {
   state: () => ({
     profile: null,
     loading: false,
+    uploadingAvatar: false,
   }),
   actions: {
     async fetchProfile() {
@@ -48,6 +51,42 @@ export const useProfileStore = defineStore('profile', {
       if (error) throw error
       this.profile = data
       return data
+    },
+    async uploadAvatar(file) {
+      const auth = useAuthStore()
+      if (!auth.user) throw new Error('Not authenticated')
+      const userId = auth.user.id
+
+      this.uploadingAvatar = true
+      try {
+        const ext = file.name.split('.').pop()
+        const filePath = `${userId}/avatar.${ext}`
+
+        const { error: uploadError } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(filePath, file, {
+            contentType: file.type,
+            upsert: true,
+          })
+        if (uploadError) throw uploadError
+
+        const { data: urlData } = supabase.storage
+          .from(STORAGE_BUCKET)
+          .getPublicUrl(filePath)
+
+        const publicUrl = urlData.publicUrl
+
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: publicUrl })
+          .eq('id', userId)
+        if (updateError) throw updateError
+
+        this.profile = { ...this.profile, avatar_url: publicUrl }
+        return publicUrl
+      } finally {
+        this.uploadingAvatar = false
+      }
     },
   },
 })
