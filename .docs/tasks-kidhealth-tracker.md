@@ -247,6 +247,76 @@ KidHealthTracker/
 - [x] **M8.6** สร้าง `public/pwa-icon.svg` — 512×512 SVG icon สำหรับ PWA
 - [x] **M8.7** อัปเดต `index.html` — manifest link, apple-touch-icon, mobile-web-app meta tags
 - [x] **M8.8** Verify: `npm run build` → PWA assets generated (`sw.js`, `manifest.webmanifest`)
+- [ ] **M8.9** 🐞 Bug: iOS Add to Home Screen Icon ไม่ขึ้น — ดูรายละเอียดด้านล่าง
+
+---
+
+### 🐞 Bug: iOS Add to Home Screen Icon ไม่ขึ้น (M8.9)
+
+**รายงาน:** ใช้ iPhone ผ่าน Safari / Chrome ทำ Add to Home Screen แล้ว icon ไม่ขึ้น (เป็น blank/default)
+
+#### Root Cause Analysis
+
+| # | สาเหตุ | ระดับ |
+|---|--------|-------|
+| 1 | **`apple-touch-icon` ใน `index.html` ชี้ไปที่ไฟล์ SVG** — iOS Safari ไม่รองรับ SVG เป็น Home Screen icon ต้องใช้ PNG เท่านั้น (iOS ใช้ WebKit render engine ซึ่งอ่าน SVG ไม่ได้สำหรับ A2HS) | 🔴 High |
+| 2 | **Manifest icons ไม่มีขนาด 180×180** — iOS ใช้ 180×180 px สำหรับ iPhone Retina (จอ standard) แต่ใน manifest มีแค่ 192×192 กับ 512×512 PNG | 🟡 Medium |
+| 3 | **iOS 16.4+ สามารถอ่าน manifest ได้บางส่วน แต่ SVG icon ที่มี `sizes: 'any'` ยังใช้ไม่ได้** | 🟡 Medium |
+
+> **หมายเหตุ:** Chrome บน iOS ก็ใช้ WebKit engine เดียวกับ Safari ดังนั้นมีพฤติกรรมเดียวกัน
+
+#### Current State (ไฟล์ที่เกี่ยวข้อง)
+
+**`index.html` (บรรทัด 6):**
+```html
+<link rel="apple-touch-icon" href="/pwa-icon-v2.svg" />  <!-- ❌ SVG → iOS ไม่แสดง -->
+```
+
+**`vite.config.js` — manifest icons (บรรทัด 26-45):**
+```js
+icons: [
+  { src: 'pwa-icon-v2.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },  // ❌ iOS ignores SVG
+  { src: 'pwa-icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },           // ⚠️ ไม่ใช่ขนาด 180×180
+  { src: 'pwa-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },  // ⚠️ ไม่ใช่ขนาด 180×180
+]
+```
+
+#### Proposed Fix
+
+1. **สร้างไฟล์ `public/pwa-icon-180.png` (180×180 px)** — resize จาก `pwa-icon-192.png` ที่มีอยู่ (หรือ export ใหม่จาก SVG ต้นฉบับ)
+2. **สร้างไฟล์ `public/pwa-icon-152.png` (152×152 px)** — สำหรับ iPad Retina
+3. **แก้ `index.html`** — เปลี่ยน `apple-touch-icon` ให้ชี้ไปที่ PNG พร้อม `sizes` attribute:
+
+   ```html
+   <link rel="apple-touch-icon" sizes="180x180" href="/pwa-icon-180.png" />
+   <link rel="apple-touch-icon" sizes="152x152" href="/pwa-icon-152.png" />
+   <!-- keep SVG only for non-iOS browsers -->
+   <link rel="apple-touch-icon" href="/pwa-icon-v2.svg" />
+   ```
+
+4. **แก้ `vite.config.js`:**
+   - เพิ่ม `pwa-icon-180.png` และ `pwa-icon-152.png` ใน `includeAssets`
+   - เพิ่ม icon entries ใน manifest:
+
+   ```js
+   { src: 'pwa-icon-180.png', sizes: '180x180', type: 'image/png', purpose: 'any' },
+   { src: 'pwa-icon-152.png', sizes: '152x152', type: 'image/png', purpose: 'any' },
+   ```
+
+5. **Build ใหม่ และทดสอบบน iPhone จริง** (ต้อง clear cache / ลบเว็บออกจาก Home screen แล้ว Add ใหม่)
+
+#### Files to Modify
+
+| File | Change |
+|------|--------|
+| `public/pwa-icon-180.png` | **New** — 180×180 PNG |
+| `public/pwa-icon-152.png` | **New** — 152×152 PNG |
+| `index.html` | แก้ `apple-touch-icon` link → ใช้ PNG + sizes |
+| `vite.config.js` | เพิ่ม new PNGs ใน `includeAssets` + manifest icons |
+
+#### References
+- [Apple Developer: Configuring Web Application Icons](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications.html)
+- [iOS 16.4+ PWA Manifest Support](https://webkit.org/blog/13808/web-push-for-web-apps-on-ios-16-4/)
 
 ---
 
