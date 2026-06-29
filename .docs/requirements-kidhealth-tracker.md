@@ -421,7 +421,139 @@ async function exportCalendar(element, yearMonth) {
 }
 ```
 
-**ผลลัพธ์:** เนื้อหาปฏิทิน + Legend จะถูกลดขนาดตามสัดส่วนเพื่อให้พอดีใน A4 portrait หน้าเดียว ไม่มีการตัดหน้า 2 อีก
+**ผลลัพธ์ (Desktop):** เนื้อหาปฏิทิน + Legend จะถูกลดขนาดตามสัดส่วนเพื่อให้พอดีใน A4 portrait หน้าเดียว ไม่มีการตัดหน้า 2 อีก
+
+**ผลลัพธ์ (iOS PWA):** ยังคงมีปัญหา — ดู v1.4.4 fix ด้านล่าง
+
+### v1.4.4 Bug Fix: iOS PWA html2canvas capture ไม่ครบ + Multi-page support
+
+**ปัญหา:** บน iOS Safari/PWA (Add to Home Screen) การ Export PDF ยังคงแสดงเนื้อหาไม่ครบ — แถวท้ายๆ ของ CalendarGrid และ Legend หายไป ลักษณะเหมือน "ตกหน้า 2" ทั้งที่ M11 (v1.3.0) scale content ให้พอดีในหน้าเดียวแล้ว
+
+**สาเหตุ:**
+1. **html2canvas บน iOS WebKit จับเฉพาะ visible viewport** — html2canvas ใช้ `window.innerHeight` / `window.innerWidth` เป็น rendering bounding box โดยปริยาย บน iOS เพราะ target element สูงกว่า viewport → render เฉพาะส่วนที่เห็นบนจอ ส่วนที่ต้อง scroll ดูจะหายไปจาก canvas
+2. **M11 fix scale proportionally** — ใช้ได้เมื่อ canvas มี content ครบถ้วนเท่านั้น ถ้าต้นทางขาด content การ scale ก็แค่ย่อของที่ขาดอยู่แล้ว
+3. **ยังไม่มี multi-page logic** — ถ้า content ยังสูงเกิน 1 หน้า A4 (เช่น 6-week month + Legend ที่มีหลายรายการ) แม้ capture ได้ครบก็จะถูกตัดที่ page boundary
+
+**แนวทางแก้ไข (Change 1 — iOS full capture):**
+
+ส่ง `height`, `width`, `windowHeight`, `windowWidth` options ไปยัง html2canvas เพื่อกำหนด bounding box ให้ตรงกับ element's scroll dimensions แทนที่จะใช้ viewport dimensions:
+
+```js
+const canvas = await html2canvas(element, {
+  scale: 2,
+  backgroundColor: '#ffffff',
+  useCORS: true,
+  height: element.scrollHeight,      // ← ความสูงที่แท้จริงของ element
+  width: element.scrollWidth,         // ← ความกว้างที่แท้จริงของ element
+  windowHeight: element.scrollHeight, // ← บังคับ iOS WebKit ให้ render ทั้ง element
+  windowWidth: element.scrollWidth,   // ← บังคับ iOS WebKit ให้ render ทั้ง element
+})
+```
+
+**แนวทางแก้ไข (Change 2 — Multi-page slicing):**
+
+เมื่อ `imgHeight > maxHeight` (content ยังสูงเกิน 1 หน้า A4) ให้ slice canvas ออกเป็นส่วนๆ ตามความสูง A4 แล้วเพิ่ม page ต่อ:
+
+```js
+if (imgHeight <= maxHeight) {
+  // Single page — center vertically
+  const yOffset = margin + (maxHeight - imgHeight) / 2
+  pdf.addImage(canvas, 'PNG', xOffset, yOffset, imgWidth, imgHeight)
+} else {
+  // Multi-page — slice canvas into A4-sized chunks
+  const pxPerPage = (maxHeight / imgHeight) * canvas.height
+  let srcY = 0
+  let pageNum = 0
+
+  while (srcY < canvas.height) {
+    if (pageNum > 0) pdf.addPage()
+
+    const slicePx = Math.min(pxPerPage, canvas.height - srcY)
+    const sliceMm = (slicePx / canvas.height) * imgHeight
+
+    const sliceCanvas = document.createElement('canvas')
+    sliceCanvas.width = canvas.width
+    sliceCanvas.height = slicePx
+    const ctx = sliceCanvas.getContext('2d')
+    ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, canvas.width, slicePx)
+
+    pdf.addImage(sliceCanvas, 'PNG', xOffset, margin, imgWidth, sliceMm)
+
+    srcY += slicePx
+    pageNum++
+  }
+}
+```
+
+**ผลลัพธ์รวม (v1.4.4):**
+- iOS Safari/PWA: html2canvas capture เนื้อหาครบทุกส่วนของ element ไม่ถูกตัด viewport
+- Multi-page: ถ้า content เกิน 1 หน้า A4 → PDF มีหลายหน้าโดยอัตโนมัติ
+- Desktop: ยังทำงานเหมือนเดิม (เปลี่ยนเป็น pass canvas object แทน base64 — performance ดีขึ้นเล็กน้อย, logic เหมือนเดิม)
+- Scaling: คง `scale: 2` เพื่อ quality
+
+**Source Code ปัจจุบัน (v1.4.4):**
+
+```js
+// src/composables/useExportPdf.js
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
+
+export function useExportPdf() {
+  async function exportCalendar(element, yearMonth) {
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      height: element.scrollHeight,
+      width: element.scrollWidth,
+      windowHeight: element.scrollHeight,
+      windowWidth: element.scrollWidth,
+    })
+
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 10
+    const maxWidth = pageWidth - margin * 2
+    const maxHeight = pageHeight - margin * 2
+
+    const imgWidth = maxWidth
+    const imgHeight = (canvas.height * maxWidth) / canvas.width
+    const xOffset = margin + (maxWidth - imgWidth) / 2
+
+    if (imgHeight <= maxHeight) {
+      const yOffset = margin + (maxHeight - imgHeight) / 2
+      pdf.addImage(canvas, 'PNG', xOffset, yOffset, imgWidth, imgHeight)
+    } else {
+      const pxPerPage = (maxHeight / imgHeight) * canvas.height
+      let srcY = 0
+      let pageNum = 0
+
+      while (srcY < canvas.height) {
+        if (pageNum > 0) pdf.addPage()
+
+        const slicePx = Math.min(pxPerPage, canvas.height - srcY)
+        const sliceMm = (slicePx / canvas.height) * imgHeight
+
+        const sliceCanvas = document.createElement('canvas')
+        sliceCanvas.width = canvas.width
+        sliceCanvas.height = slicePx
+        const ctx = sliceCanvas.getContext('2d')
+        ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, canvas.width, slicePx)
+
+        pdf.addImage(sliceCanvas, 'PNG', xOffset, margin, imgWidth, sliceMm)
+
+        srcY += slicePx
+        pageNum++
+      }
+    }
+
+    pdf.save(`kidhealth-${yearMonth}.pdf`)
+  }
+
+  return { exportCalendar }
+}
+```
 
 ---
 

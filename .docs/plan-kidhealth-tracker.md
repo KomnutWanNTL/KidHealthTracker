@@ -578,7 +578,8 @@ await supabase
 | Race: `getSession()` resolves after first route render | Brief redirect glitch | Await `auth.init()` in `main.js` before `app.mount` |
 | Avatar upload file too large | Upload failure, bad UX | Validate ≤ 2MB client-side before upload |
 | Supabase Storage RLS misconfigured | Users can't upload/see avatars | Test CRUD policies with service_role key |
-| `html2canvas` clip content at page boundary | PDF content cut off | Remove pagination loop; use `fit` scaling to keep all content in 1 page |
+| `html2canvas` clip content at page boundary (desktop) | PDF content cut off | Use `fit` scaling to keep all content in 1 page (M11/v1.3.0) |
+| `html2canvas` on iOS PWA captures only visible viewport | PDF content missing bottom rows (CalendarGrid + Legend) | Pass `height/width/windowHeight/windowWidth` scroll dimensions to html2canvas; add multi-page slicing fallback (M16/v1.4.4) |
 | Avatar image distortion | Bad visual | Use `object-fit: cover` + 1:1 crop at client |
 | Browser cache after avatar re-upload | Old avatar still shown | Add `?t=${Date.now()}` cache-busting param to public URL |
 | iOS HEIC photos not selectable in file picker | Users can't upload photos from iOS album | Add `image/heic,image/heif` to `accept` + convert HEIC→JPEG client-side |
@@ -663,3 +664,4 @@ await supabase
 | 1.4.1 | Bug fix: avatar upload crash on compressed Blob (no `.name`) | |
 | 1.4.2 | Bug fix: avatar upload not overwriting (path had extension) | |
 | 1.4.3 | Bug fix: avatar cache ทุกรอบ (cache-busting) + รองรับ HEIC จาก iOS | |
+| 1.4.4 | Bug fix: PDF Export iOS PWA capture ไม่ครบ + multi-page slicing | |

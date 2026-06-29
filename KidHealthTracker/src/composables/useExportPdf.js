@@ -3,12 +3,18 @@ import { jsPDF } from 'jspdf'
 
 export function useExportPdf() {
   async function exportCalendar(element, yearMonth) {
+    // Capture full element content — explicitly pass scroll dimensions so
+    // html2canvas works correctly on iOS PWA (otherwise it only captures
+    // the visible viewport, cutting off bottom rows of CalendarGrid + Legend)
     const canvas = await html2canvas(element, {
       scale: 2,
       backgroundColor: '#ffffff',
       useCORS: true,
+      height: element.scrollHeight,
+      width: element.scrollWidth,
+      windowHeight: element.scrollHeight,
+      windowWidth: element.scrollWidth,
     })
-    const imgData = canvas.toDataURL('image/png')
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const pageWidth = pdf.internal.pageSize.getWidth()
@@ -17,17 +23,39 @@ export function useExportPdf() {
     const maxWidth = pageWidth - margin * 2
     const maxHeight = pageHeight - margin * 2
 
-    let imgWidth = maxWidth
-    let imgHeight = (canvas.height * maxWidth) / canvas.width
-
-    if (imgHeight > maxHeight) {
-      const ratio = maxHeight / imgHeight
-      imgHeight = maxHeight
-      imgWidth = maxWidth * ratio
-    }
-
+    const imgWidth = maxWidth
+    const imgHeight = (canvas.height * maxWidth) / canvas.width
     const xOffset = margin + (maxWidth - imgWidth) / 2
-    pdf.addImage(imgData, 'PNG', xOffset, margin, imgWidth, imgHeight)
+
+    if (imgHeight <= maxHeight) {
+      // ── Single page — content fits one A4 page ──
+      const yOffset = margin + (maxHeight - imgHeight) / 2
+      pdf.addImage(canvas, 'PNG', xOffset, yOffset, imgWidth, imgHeight)
+    } else {
+      // ── Multi-page — slice canvas into A4-sized chunks ──
+      const pxPerPage = (maxHeight / imgHeight) * canvas.height
+      let srcY = 0
+      let pageNum = 0
+
+      while (srcY < canvas.height) {
+        if (pageNum > 0) pdf.addPage()
+
+        const slicePx = Math.min(pxPerPage, canvas.height - srcY)
+        const sliceMm = (slicePx / canvas.height) * imgHeight
+
+        // Extract a horizontal slice from the source canvas
+        const sliceCanvas = document.createElement('canvas')
+        sliceCanvas.width = canvas.width
+        sliceCanvas.height = slicePx
+        const ctx = sliceCanvas.getContext('2d')
+        ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, canvas.width, slicePx)
+
+        pdf.addImage(sliceCanvas, 'PNG', xOffset, margin, imgWidth, sliceMm)
+
+        srcY += slicePx
+        pageNum++
+      }
+    }
 
     pdf.save(`kidhealth-${yearMonth}.pdf`)
   }
