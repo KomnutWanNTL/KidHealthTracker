@@ -62,7 +62,7 @@ create table public.daily_logs (
   updated_at  timestamptz not null default now(),
   constraint daily_logs_user_date_unique unique (user_id, log_date),
   constraint daily_logs_symptom_check check (
-    symptom in ('NORMAL','RUNNY_CLEAR','FEVER','FEVER_RUNNY_CLEAR','FEVER_RUNNY_GREEN')
+    symptom in ('NORMAL','RUNNY_CLEAR','FEVER','FEVER_RUNNY_CLEAR','RUNNY_GREEN','FEVER_RUNNY_GREEN')
   )
 );
 
@@ -159,7 +159,7 @@ Tasks:
 - First-time user on today → empty state, save works
 - Reload page → today's saved value is pre-selected
 - Pick yesterday → loads yesterday's value (if any)
-- Pick tomorrow → input is blocked (`max` attr + JS guard)
+- Pick tomorrow → input is blocked (`max` attr + JS guard in store)
 - Save without selection → button disabled
 
 ---
@@ -476,6 +476,7 @@ export const useProfileStore = defineStore('profile', {
             last_name: meta.last_name || '',
             child_name: '',
             child_birthday: null,
+            child_gender: null,
           })
           .select()
           .single()
@@ -600,5 +601,5 @@ await supabase
 | 1.0.1 | แก้บั๊ก link ยืนยัน email |
 | 1.0.2 | แก้ UI padding, เพิ่ม loading spinner |
 | 1.1.0 | เพิ่ม export CSV, เพิ่มหน้า Settings |
-| 1.2.0 | เพิ่ม symptom RUNNY_GREEN, เพิ่มโทนสีใหม่ |
+| 1.2.0 | เพิ่ม symptom RUNNY_GREEN, child_gender, greeting, PWA icon fix, date validation |
 | 2.0.0 | เปลี่ยน DB schema, redesign ใหม่ทั้งตัว |

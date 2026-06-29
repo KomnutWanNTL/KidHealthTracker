@@ -26,9 +26,10 @@ KidHealthTracker/
 ├── vite.config.js            # Vue + Tailwind + VitePWA plugins
 ├── vercel.json               # SPA fallback
 ├── public/
-│   ├── favicon.svg
-│   ├── icons.svg
-│   └── pwa-icon.svg          # PWA home screen icon
+│   ├── favicon-v2.svg
+│   ├── pwa-icon-v2.svg       # PWA home screen icon (SVG)
+│   ├── pwa-icon-192.png      # PWA icon 192×192 PNG
+│   └── pwa-icon-512.png      # PWA icon 512×512 PNG
 └── src/
     ├── main.js               # bootstrap: auth.init() → router → mount
     ├── App.vue               # loading splash + router-view + BottomNav
@@ -290,6 +291,9 @@ KidHealthTracker/
 - [ ] **T18** Register → receive email → click link → redirect `/login` (not localhost)
 - [ ] **T19** PWA: Chrome DevTools → Manifest valid, Service Worker registered
 - [ ] **T20** PWA: iOS Safari → "Add to Home Screen" shows app icon + name
+- [ ] **T21** เลือกเพศลูก (ชาย/หญิง) → header dashboard แสดง icon ตรงเพศ
+- [ ] **T22** บันทึกวันในอนาคต → แสดง error "ไม่สามารถบันทึกวันในอนาคตได้"
+- [ ] **T23** PWA manifest ต้อง valid (manifest.webmanifest มี PNG + SVG icons)
 
 ---
 
@@ -303,6 +307,27 @@ KidHealthTracker/
 | `npx supabase login` | Login to Supabase CLI (optional) |
 | `vercel --prod` | Deploy to production |
 | `vercel` | Deploy to preview |
+
+---
+
+---
+ 
+## 🎯 Milestone 10 — Post-Launch Improvements (v1.2.0)
+ 
+**Est:** 0.5 day
+ 
+### Tasks
+ 
+- [x] **M10.1** เพิ่ม greeting "พ่อแม่น้อง{ชื่อลูก}" แทน "คุณพ่อคุณแม่ของ{ชื่อลูก}"
+- [x] **M10.2** เพิ่ม child_gender field + gender selector ใน ProfilePage
+- [x] **M10.3** แสดง icon เด็กผู้ชาย/ผู้หญิงที่ header dashboard ตาม child_gender
+- [x] **M10.4** แก้ไข: `today` เป็น computed ref ป้องกันค่าเก่าค้าง
+- [x] **M10.5** แก้ไข: เพิ่ม `date > today` validation ใน logs store (ป้องกันบันทึกวันอนาคต)
+- [x] **M10.6** แก้ไข: PWA manifest filename (manifest.json → manifest.webmanifest)
+- [x] **M10.7** เพิ่ม PNG icons (192×192 + 512×512) สำหรับ PWA compatibility
+- [x] **M10.8** เปลี่ยน T00:00:00 → T12:00:00 ป้องกัน timezone edge case
+- [x] **M10.9** เพิ่ม `:max="today"` ใน birthday input ของ ProfilePage
+- [x] **M10.10** Bump version 1.2.0, อัปเดต docs ทั้งหมด
 
 ---
 

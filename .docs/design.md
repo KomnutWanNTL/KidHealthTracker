@@ -45,6 +45,7 @@
 | `--symptom-runny-clear` | `#3B82F6` | `#EFF6FF` | `#93C5FD` | น้ำมูกใส |
 | `--symptom-fever` | `#F97316` | `#FFF7ED` | `#FED7AA` | มีไข้ |
 | `--symptom-fever-runny-clear` | `#EF4444` | `#FEF2F2` | `#FCA5A5` | ไข้ + น้ำมูกใส |
+| `--symptom-runny-green` | `#84CC16` | `#F7FEE7` | `#BEF264` | น้ำมูกเขียว |
 | `--symptom-fever-runny-green` | `#78716C` | `#FAFAF9` | `#D6D3D1` | ไข้ + น้ำมูกเขียว |
 | `--symptom-no-data` | `#F1F5F9` | — | — | ไม่มีข้อมูล |
 
@@ -154,7 +155,7 @@
 | Selected | symptom solid | symptom solid | `#ffffff` | `shadow-symptom` |
 | Hover | tint + 5% darken | — | — | — |
 
-**Layout:** 2 คอลัมน์ grid สำหรับ 4 ตัวแรก, full-width สำหรับตัวที่ 5  
+**Layout:** 2 คอลัมน์ grid สำหรับ 6 ตัว  
 **Size:** min-height 64px, emoji 28px, label 13px/700
 
 ---
@@ -340,7 +341,7 @@ padding: --space-4
 
 ```
   บันทึกอาการ          ← eyebrow
-  สวัสดี คุณแม่ 👋  [👶]
+   สวัสดี พ่อแม่น้องมีมี 👋  [👦/👧/👶]
 
   ┌─ เลือกวันที่ ──────────────────┐
   │  📆 [dropdown]                 │
@@ -398,7 +399,8 @@ padding: --space-4
   │       manat@email.com       │
   ├─────────────────────────────┤
   │ 👶 ชื่อลูก     [น้องมีมี]   │  ← editable input
-  │ 🎂 วันเกิดลูก  [12 ม.ค. 65]│  ← date input (แสดงอายุอัตโนมัติ)
+  │ 🎂 วันเกิดลูก  [12 ม.ค. 65]│  ← date input (:max = วันนี้, แสดงอายุอัตโนมัติ)
+  │ ⚤ เพศลูก      [👦 ชาย / 👧 หญิง] │  ← gender toggle button
   │ 📊 บันทึกเดือนนี้  45 วัน   │
   └─────────────────────────────┘
 

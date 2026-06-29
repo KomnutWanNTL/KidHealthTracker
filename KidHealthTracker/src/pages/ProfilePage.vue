@@ -18,6 +18,7 @@ const saving = ref(false)
 const totalLogs = ref(0)
 const childName = ref('')
 const childBirthday = ref('')
+const childGender = ref('')
 const firstName = ref('')
 const lastName = ref('')
 
@@ -68,6 +69,7 @@ onMounted(async () => {
     lastName.value = profile.last_name || ''
     childName.value = profile.child_name || ''
     childBirthday.value = profile.child_birthday || ''
+    childGender.value = profile.child_gender || ''
   }
 })
 
@@ -77,6 +79,7 @@ async function handleSave() {
     await profileStore.updateProfile({
       child_name: childName.value,
       child_birthday: childBirthday.value || null,
+      child_gender: childGender.value || null,
     })
     success('บันทึกข้อมูลเรียบร้อย ✓')
   } catch (e) {
@@ -135,8 +138,28 @@ async function handleLogout() {
             id="child-birthday"
             v-model="childBirthday"
             type="date"
+            :max="new Date().toISOString().split('T')[0]"
             class="input profile-row__input profile-row__input--date"
           />
+        </div>
+
+        <div class="profile-row">
+          <span class="profile-row__icon" aria-hidden="true">⚤</span>
+          <label for="child-gender" class="profile-row__label">เพศลูก</label>
+          <div class="profile-row__gender">
+            <button
+              type="button"
+              class="gender-btn"
+              :class="{ 'gender-btn--active': childGender === 'male' }"
+              @click="childGender = 'male'"
+            >👦 ชาย</button>
+            <button
+              type="button"
+              class="gender-btn"
+              :class="{ 'gender-btn--active': childGender === 'female' }"
+              @click="childGender = 'female'"
+            >👧 หญิง</button>
+          </div>
         </div>
 
         <div v-if="ageText" class="profile-row profile-row--age">
@@ -278,6 +301,29 @@ async function handleLogout() {
   max-width: 150px;
   appearance: none;
   -webkit-appearance: none;
+}
+
+.profile-row__gender {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.gender-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border-subtle);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gender-btn--active {
+  background: #0EA5E9;
+  border-color: #0EA5E9;
+  color: #fff;
 }
 
 .profile-logout {

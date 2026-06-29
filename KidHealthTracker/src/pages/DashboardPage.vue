@@ -12,22 +12,29 @@ const auth = useAuthStore()
 const profileStore = useProfileStore()
 const { success, error: showError } = useToast()
 
-const today = new Date().toISOString().split('T')[0]
-const selectedDate = ref(today)
+const today = computed(() => new Date().toISOString().split('T')[0])
+const selectedDate = ref(today.value)
 const selectedSymptom = ref(null)
 const saving = ref(false)
 
 const greetingName = computed(() => {
   const childName = profileStore.profile?.child_name
-  if (childName) return `คุณพ่อคุณแม่ของ${childName}`
+  if (childName) return `พ่อแม่น้อง${childName}`
   const firstName = profileStore.profile?.first_name
   if (firstName) return firstName
   const email = auth.user?.email || ''
-  return email.split('@')[0] || 'คุณพ่อคุณแม่'
+  return email.split('@')[0] || 'พ่อแม่น้อง'
+})
+
+const childIcon = computed(() => {
+  const gender = profileStore.profile?.child_gender
+  if (gender === 'male') return '👦'
+  if (gender === 'female') return '👧'
+  return '👶'
 })
 
 const formattedDate = computed(() => {
-  const d = new Date(selectedDate.value + 'T00:00:00')
+  const d = new Date(selectedDate.value + 'T12:00:00')
   return d.toLocaleDateString('th-TH', {
     weekday: 'long',
     day: 'numeric',
@@ -71,7 +78,7 @@ watch(selectedDate, loadLog)
         <span class="eyebrow">บันทึกอาการ</span>
         <h1 class="t-page-heading">สวัสดี {{ greetingName }} 👋</h1>
       </div>
-      <router-link to="/profile" class="avatar" aria-label="โปรไฟล์">👶</router-link>
+      <router-link to="/profile" class="avatar" aria-label="โปรไฟล์">{{ childIcon }}</router-link>
     </header>
 
     <section class="card date-card">

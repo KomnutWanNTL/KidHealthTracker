@@ -44,6 +44,8 @@ export const useLogsStore = defineStore('logs', {
     async upsertLog(date, symptom) {
       const auth = useAuthStore()
       if (!auth.user) throw new Error('Not authenticated')
+      const today = new Date().toISOString().split('T')[0]
+      if (date > today) throw new Error('ไม่สามารถบันทึกวันในอนาคตได้')
       const { error } = await supabase.from('daily_logs').upsert(
         { user_id: auth.user.id, log_date: date, symptom },
         { onConflict: 'user_id,log_date' },
