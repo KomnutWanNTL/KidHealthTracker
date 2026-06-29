@@ -492,6 +492,62 @@ icons: [
 
 ---
 
+## 🎯 Milestone 16 — Bug Fix: PDF Export ขาดเนื้อหาบน iOS PWA (v1.4.4)
+
+**Est:** 0.25 day
+
+### Tasks
+
+- [x] **M16.1** 🐞 **Bug: PDF Export บน iOS PWA เนื้อหาตก/หาย**
+  - **รายงาน:** เมื่อกด Export PDF ผ่าน PWA (Add to Home Screen) บน iPhone/iOS Safari เนื้อหาปฏิทินส่วนล่าง (แถวสุดท้ายของ CalendarGrid + Legend) หายไป หรือ "ตกหน้า 2" ที่ไม่มีอยู่จริง
+  - **Environment:** iOS Safari / iOS PWA standalone mode
+
+- [x] **M16.2** **Root Cause Analysis**
+
+  | # | สาเหตุ | ระดับ |
+  |---|--------|-------|
+  | 1 | **html2canvas บน iOS Safari จับเฉพาะ viewport ที่เห็น** — html2canvas ใช้ `window.innerHeight` / `window.innerWidth` เป็นค่าเริ่มต้นสำหรับ rendering canvas บน iOS WebKit ถ้า element ที่จะ capture มีความสูงเกิน viewport จะ render เฉพาะส่วนที่เห็นบนจอเท่านั้น ส่วนที่ scroll หายไปจะไม่รวมใน canvas | 🔴 High |
+  | 2 | **ไม่มี fallback dimension options** — `useExportPdf.js` ไม่ได้ส่ง `height`/`width`/`windowHeight`/`windowWidth` options ไปให้ html2canvas เพื่อกำหนด bounding box ของการ capture ทำให้ iOS ใช้ viewport dimensions แทน | 🔴 High |
+  | 3 | **ไม่มี multi-page logic** — ถึงแม้ M11 (v1.3.0) จะเพิ่ม scaling เพื่อให้เนื้อหาพอดีในหน้าเดียว แต่ scaling ใช้ได้เมื่อ canvas มีเนื้อหาครบถ้วนเท่านั้น ถ้า canvas ถูกตัดตั้งแต่ต้น การ scale ก็แค่ย่อเนื้อหาที่ไม่สมบูรณ์ | 🟡 Medium |
+
+- [x] **M16.3** **Fix `useExportPdf.js`:**
+
+  **Change 1 — iOS html2canvas full capture:**
+  ```js
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    backgroundColor: '#ffffff',
+    useCORS: true,
+    height: element.scrollHeight,      // ← NEW: บอก html2canvas ว่า element สูงเท่าไหร่
+    width: element.scrollWidth,         // ← NEW: บอก html2canvas ว่า element กว้างเท่าไหร่
+    windowHeight: element.scrollHeight, // ← NEW: บังคับ iOS ให้ render ทั้ง element
+    windowWidth: element.scrollWidth,   // ← NEW: บังคับ iOS ให้ render ทั้ง element
+  })
+  ```
+
+  **Change 2 — Multi-page slicing (เมื่อ content ยังสูงเกิน 1 หน้า A4):**
+  - ถ้า `imgHeight <= maxHeight` → single page (center vertically)
+  - ถ้า `imgHeight > maxHeight` → slice canvas เป็นส่วนๆ ตามความสูง A4 → `addPage()` + `addImage()` ต่อชิ้น
+  - ใช้ `ctx.drawImage(canvas, sx, sy, sw, sh, dx, dy, dw, dh)` crop ทีละ page-sized slice
+  - แต่ละ slide สร้าง temp canvas ใหม่เพื่อไม่ให้กระทบต้นฉบับ
+
+  **Files to modify:**
+  | File | Change |
+  |------|--------|
+  | `src/composables/useExportPdf.js` | เพิ่ม dimension options + multi-page slicing |
+
+- [x] **M16.4** ทดสอบ:
+  - iOS Safari จริง: Export PDF → เนื้อหาครบทุกแถวของ CalendarGrid + Legend
+  - iOS PWA (Add to Home Screen): Export → เนื้อหาครบถ้วน
+  - Chrome Desktop: ยังทำงานเหมือนเดิม ไม่ regression
+  - Safari macOS: ยังทำงานเหมือนเดิม ไม่ regression
+  - เดือนที่มี 6 สัปดาห์ (calendar สูง): ถ้า content > 1 หน้า → split อัตโนมัติ
+  - เดือนที่มี 4-5 สัปดาห์: single page กึ่งกลาง
+
+- [x] **M16.5** Bump version `1.4.4`, อัปเดต docs
+
+---
+
 ## 📝 Notes
 
 - **`VITE_SUPABASE_ANON_KEY`** ใน `.env.development` และ `.env.production` ต้องใส่ค่าจริงจาก Supabase Dashboard ก่อนรัน
