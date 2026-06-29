@@ -516,3 +516,18 @@ icons: [
   - **🐛 Bug:** เมื่ออัปโหลดรูป >700KB `compressImage()` คืนค่า `Blob` ซึ่งไม่มี `.name` → `file.name.split('.')` crash ด้วย `"undefined is not object (evaluating 'n.name.split')"`
   - **🔧 Fix:** เพิ่ม null-safe check `file.name ? file.name.split('.').pop() : 'jpg'` ใน `stores/profile.js:62`
   - เนื่องจาก `compressImage()` output เป็น JPEG เสมอ (`canvas.toBlob` ใช้ `'image/jpeg'`) จึง safe ที่จะ fallback เป็น `'jpg'`
+
+---
+
+## 🎯 Milestone 14 — Bug Fix: Avatar Upload ไม่ Overwrite รูปเก่า (v1.4.2)
+
+**Est:** 0.1 day
+
+### Tasks
+
+- [x] **M14.1** วิเคราะห์สาเหตุ: `uploadAvatar()` ใช้ path `{userId}/avatar.{ext}` ซึ่ง `ext` มาจาก `file.name.split('.').pop()` ทำให้ path เปลี่ยนตามนามสกุลไฟล์ต้นทาง → `upsert: true` ไม่สามารถ overwrite รูปเก่าได้ เพราะ path ต่างกัน
+- [x] **M14.2** แก้ `stores/profile.js`: เปลี่ยน path เป็น `{userId}/avatar` (ไม่มี extension) เพื่อให้ `upsert: true` overwrite ไฟล์เดิมได้ทุกครั้ง
+- [x] **M14.3** ทดสอบ:
+  - อัปโหลด PNG → path `{userId}/avatar` → อัปโหลด JPG ซ้ำ → path `{userId}/avatar` เดิม → overwrite สำเร็จ
+  - อัปโหลดรูปใหญ่ (>700KB) → ถูก compress เป็น Blob → path `{userId}/avatar` → overwrite สำเร็จ
+- [x] **M14.4** Bump version 1.4.2, อัปเดต docs

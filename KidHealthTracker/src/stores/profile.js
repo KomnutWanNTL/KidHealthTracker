@@ -59,8 +59,7 @@ export const useProfileStore = defineStore('profile', {
 
       this.uploadingAvatar = true
       try {
-        const ext = file.name ? file.name.split('.').pop() : 'jpg'
-        const filePath = `${userId}/avatar.${ext}`
+        const filePath = `${userId}/avatar`
 
         const { error: uploadError } = await supabase.storage
           .from(STORAGE_BUCKET)

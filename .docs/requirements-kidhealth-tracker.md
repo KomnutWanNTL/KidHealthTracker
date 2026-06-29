@@ -293,7 +293,7 @@ flowchart LR
 **Avatar Upload (v1.4.0):**
 - ผู้ใช้สามารถอัปโหลดรูปโปรไฟล์ได้จากหน้า Profile (คลิกที่ avatar หรือปุ่มเปลี่ยนรูป)
 - รูปจะถูกอัปโหลดไปยัง Supabase Storage bucket `avatars`
-- Path ใน Storage: `{user_id}/avatar.{ext}` (ไฟล์ใหม่ overwrite ไฟล์เก่าอัตโนมัติด้วย `upsert: true`)
+- Path ใน Storage: `{user_id}/avatar` (ไม่มี extension — path คงที่เสมอ เพื่อให้ `upsert: true` overwrite ไฟล์เดิมได้ทุกครั้ง)
 - Client-side auto-compress: ถ้าไฟล์ >700KB จะลด quality + resize ผ่าน `<canvas>` จนไฟล์ ≤700KB
 - รองรับไฟล์ .jpg, .jpeg, .png (file picker จำกัด) แต่ output เป็น JPEG เสมอ
 - หลัง upload สำเร็จ `avatar_url` ในตาราง `profiles` จะถูกอัปเดต
@@ -521,7 +521,7 @@ User คลิก avatar / ปุ่มเปลี่ยนรูป
   → เปิด file picker (accept="image/jpeg,image/png")
   → validate ขนาด ≤ 2MB
   → crop เป็น 1:1 (ใช้ canvas/css)
-  → upload ไปที่ storage/avatars/{user_id}/{timestamp}.{ext}
+  → upload ไปที่ storage/avatars/{user_id}/avatar (path คงที่, upsert: true)
   → ได้ public URL กลับมา
   → อัปเดต profiles.avatar_url
   → Header Dashboard + Profile card แสดงรูปใหม่
