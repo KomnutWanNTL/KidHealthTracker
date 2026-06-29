@@ -6,6 +6,7 @@ import { useLogsStore } from '@/stores/logs'
 import { useProfileStore } from '@/stores/profile'
 import { useToast } from '@/composables/useToast'
 import { version } from '../../package.json'
+import heic2any from 'heic2any'
 
 const auth = useAuthStore()
 const logs = useLogsStore()
@@ -160,9 +161,17 @@ async function handleFileChange(event) {
 
   uploading.value = true
   try {
-    const fileToUpload = file.size > 700 * 1024
-      ? await compressImage(file, 700 * 1024)
-      : file
+    let fileToUpload = file
+
+    if (file.type === 'image/heic' || file.type === 'image/heif') {
+      const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 })
+      fileToUpload = Array.isArray(converted) ? converted[0] : converted
+    }
+
+    if (fileToUpload.size > 700 * 1024) {
+      fileToUpload = await compressImage(fileToUpload, 700 * 1024)
+    }
+
     await profileStore.uploadAvatar(fileToUpload)
     success('อัปโหลดรูปโปรไฟล์เรียบร้อย ✓')
   } catch (e) {
@@ -195,7 +204,7 @@ async function handleFileChange(event) {
           </div>
           <div v-if="uploading" class="avatar-spinner"></div>
         </div>
-        <input ref="fileInput" type="file" accept="image/jpeg,image/png" hidden @change="handleFileChange" />
+        <input ref="fileInput" type="file" accept="image/jpeg,image/png,image/heic,image/heif" hidden @change="handleFileChange" />
         <div>
           <p class="profile-card__name">{{ fullName }}</p>
           <p class="profile-card__email">{{ email || '—' }}</p>

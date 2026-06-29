@@ -288,6 +288,10 @@ Tasks:
 ---
 
 ### Phase 7b — Avatar Upload (M7b, v1.4.0)
+
+> **Known Issues (v1.4.3):** 
+> - **Cache-busting:** ต้องเติม `?t={timestamp}` ต่อ public URL เพื่อป้องกัน browser cache รูปเก่า
+> - **iOS HEIC support:** รูปจากกล้อง iPhone เป็น HEIC (.heic) → เพิ่ม MIME type ใน `accept` + แปลง HEIC→JPEG ด้วย `heic2any` ก่อน upload
 **Goal:** User can upload profile picture (avatar) and see it on Header + Profile page.
 
 Tasks:
@@ -576,6 +580,8 @@ await supabase
 | Supabase Storage RLS misconfigured | Users can't upload/see avatars | Test CRUD policies with service_role key |
 | `html2canvas` clip content at page boundary | PDF content cut off | Remove pagination loop; use `fit` scaling to keep all content in 1 page |
 | Avatar image distortion | Bad visual | Use `object-fit: cover` + 1:1 crop at client |
+| Browser cache after avatar re-upload | Old avatar still shown | Add `?t=${Date.now()}` cache-busting param to public URL |
+| iOS HEIC photos not selectable in file picker | Users can't upload photos from iOS album | Add `image/heic,image/heif` to `accept` + convert HEIC→JPEG client-side |
 
 ---
 
@@ -654,3 +660,6 @@ await supabase
 | 1.2.0 | เพิ่ม symptom RUNNY_GREEN, child_gender, greeting, PWA icon fix, date validation |
 | 1.3.0 | แก้ PDF export ตกหน้า 2 | |
 | 1.4.0 | เพิ่มอัปโหลดรูปโปรไฟล์ | |
+| 1.4.1 | Bug fix: avatar upload crash on compressed Blob (no `.name`) | |
+| 1.4.2 | Bug fix: avatar upload not overwriting (path had extension) | |
+| 1.4.3 | Bug fix: avatar cache ทุกรอบ (cache-busting) + รองรับ HEIC จาก iOS | |

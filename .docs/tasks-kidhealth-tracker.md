@@ -531,3 +531,41 @@ icons: [
   - อัปโหลด PNG → path `{userId}/avatar` → อัปโหลด JPG ซ้ำ → path `{userId}/avatar` เดิม → overwrite สำเร็จ
   - อัปโหลดรูปใหญ่ (>700KB) → ถูก compress เป็น Blob → path `{userId}/avatar` → overwrite สำเร็จ
 - [x] **M14.4** Bump version 1.4.2, อัปเดต docs
+
+---
+
+## 🎯 Milestone 15 — Bug Fix: Avatar Cache + iOS HEIC Support (v1.4.3)
+
+**Est:** 0.3 day
+
+### Tasks
+
+- [ ] **M15.1** 🐞 **Bug: Avatar ไม่ reload หลัง upload** (Browser Cache)
+  - **สาเหตุ:** `uploadAvatar()` ใช้ path `{userId}/avatar` คงที่ + `upsert: true` → public URL ไม่เปลี่ยน → browser แสดงรูปเก่าที่ cached
+  - **Fix:** เพิ่ม `?t=${Date.now()}` ต่อท้าย publicUrl ก่อน set `this.profile.avatar_url`
+  - **Files:** `src/stores/profile.js` (บรรทัด ~76)
+
+- [ ] **M15.2** 🐞 **Bug: เลือกรูปจาก Album iOS ไม่ได้**
+  - **สาเหตุ:** `<input accept="image/jpeg,image/png">` ไม่รวม `image/heic` / `image/heif` → iOS file picker กรอง HEIC photos ออก
+  - **Fix:** เพิ่ม `image/heic,image/heif` ใน `accept` attribute
+  - **Files:** `src/pages/ProfilePage.vue` (บรรทัด 198)
+
+- [ ] **M15.3** 🐞 **HEIC→JPEG conversion support**
+  - **สาเหตุ:** แม้ iOS จะ allow HEIC file ได้ แต่ Supabase Storage bucket จำกัด MIME types + `<canvas>.toBlob` ไม่ support HEIC output
+  - **Fix:** ใช้ `heic2any` library แปลง HEIC เป็น JPEG ก่อน upload
+  - **Files:** `src/pages/ProfilePage.vue` (handleFileChange)
+  - **Dependency:** `heic2any` (npm)
+
+- [ ] **M15.4** ทดสอบ:
+  - อัปโหลดรูป → preview อัปเดตทันที (ไม่ค้างรูปเก่า)
+  - อัปโหลด HEIC จาก iOS file picker → แปลงเป็น JPEG → upload สำเร็จ
+  - อัปโหลด JPEG/PNG ปกติ → ยังทำงานเหมือนเดิม
+  - Dashboard header avatar อัปเดตหลังจากกลับมาหน้า Dashboard
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/stores/profile.js` | เพิ่ม `?t=${Date.now()}` cache-busting หลัง `getPublicUrl` |
+| `src/pages/ProfilePage.vue` | เพิ่ม `image/heic,image/heif` ใน `accept`; เพิ่ม HEIC→JPEG conversion |
+| `package.json` | เพิ่ม `heic2any` dependency |

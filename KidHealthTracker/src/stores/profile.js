@@ -73,7 +73,7 @@ export const useProfileStore = defineStore('profile', {
           .from(STORAGE_BUCKET)
           .getPublicUrl(filePath)
 
-        const publicUrl = urlData.publicUrl
+        const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
 
         const { error: updateError } = await supabase
           .from('profiles')

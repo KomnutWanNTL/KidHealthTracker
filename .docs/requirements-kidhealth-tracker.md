@@ -300,6 +300,10 @@ flowchart LR
 - Header Dashboard แสดง avatar ที่ upload แทน icon emoji (ถ้ามี) หรือ fallback เป็น 👶/👦/👧 ตาม child_gender
 - หน้า Profile แสดง avatar ที่ upload ใน profile card แทน 👩 hardcoded
 
+**Avatar Upload (v1.4.3) — Bug Fixes:**
+- **Cache-busting:** ต่อท้าย `?t={timestamp}` กับ public URL ทุกครั้งที่ upload เพื่อบังคับ browser reload รูปใหม่ ไม่ค้างรูปเก่า
+- **iOS HEIC Support:** เพิ่ม `image/heic,image/heif` ใน file picker `accept` + แปลง HEIC→JPEG ด้วย `heic2any` library ก่อน upload
+
 ---
 
 ## 5. Profile Feature — Data Model
@@ -465,6 +469,7 @@ CREATE POLICY "Users can manage own logs"
 - Public: ✅ (allow public access to read)
 - File size limit: 2MB
 - Allowed MIME types: `image/jpeg`, `image/png`
+  - **v1.4.3:** HEIC (.heic) จะถูกแปลงเป็น JPEG ก่อน upload (client-side) ดังนั้นไม่ต้องเพิ่ม MIME type ใน bucket config
 
 ### RLS Policy สำหรับ Storage
 
@@ -518,13 +523,13 @@ CREATE POLICY "Users can delete own avatars"
 
 ```
 User คลิก avatar / ปุ่มเปลี่ยนรูป
-  → เปิด file picker (accept="image/jpeg,image/png")
-  → validate ขนาด ≤ 2MB
-  → crop เป็น 1:1 (ใช้ canvas/css)
+  → เปิด file picker (accept="image/jpeg,image/png,image/heic,image/heif")
+  → ถ้าเป็น HEIC → แปลงเป็น JPEG ผ่าน heic2any library
+  → validate ขนาด ≤ 700KB (auto-compress ผ่าน canvas ถ้าเกิน)
   → upload ไปที่ storage/avatars/{user_id}/avatar (path คงที่, upsert: true)
-  → ได้ public URL กลับมา
+  → ได้ public URL + ต่อท้าย ?t={timestamp} (cache-busting)
   → อัปเดต profiles.avatar_url
-  → Header Dashboard + Profile card แสดงรูปใหม่
+  → Header Dashboard + Profile card แสดงรูปใหม่ทันที (ไม่ค้าง cache)
 ```
 
 ### Public URL Pattern
