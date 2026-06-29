@@ -1,0 +1,28 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "model": "opencode-go/deepseek-v4-flash",
+  "default_agent": "code",
+  "skills": {
+    "paths": [".kilo/skills"]
+  },
+  "instructions": ["AGENTS.md"],
+  "permission": {
+    "bash": "allow",
+    "read": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "edit": {
+      "KidHealthTracker/src/**": "allow",
+      "KidHealthTracker/public/**": "allow",
+      "KidHealthTracker/*": "allow",
+      ".docs/**": "ask",
+      "*": "ask"
+    },
+    "task": "allow",
+    "webfetch": "allow"
+  },
+  "compaction": {
+    "auto": true,
+    "prune": true
+  }
+}

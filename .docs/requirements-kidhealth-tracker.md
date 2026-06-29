@@ -270,7 +270,8 @@ flowchart LR
 **Elements:**
 - Header: eyebrow "โปรไฟล์" + heading "บัญชีของคุณ"
 - Profile card (gradient header):
-  - Avatar (👩)
+  - Avatar (รูป upload หรือ 👩 fallback)
+  - ปุ่มเปลี่ยนรูปโปรไฟล์ (ถ่ายรูป / เลือกจากคลัง)
   - ชื่อ-นามสกุล (จาก profiles.first_name + profiles.last_name)
   - Email
 - Profile body:
@@ -289,6 +290,16 @@ flowchart LR
 - child_birthday → อายุจะอัปเดตอัตโนมัติที่ frontend (คำนวณจากวันที่ปัจจุบัน เทียบกับ child_birthday)
 - แสดงอายุเป็น "X ปี Y เดือน Z วัน" หรือ "X ปี Y เดือน" หรือ "X เดือน" (ถ้าอายุ < 2 ปี) หรือ "X วัน" (ถ้าอายุ < 1 เดือน)
 
+**Avatar Upload (v1.3.0):**
+- ผู้ใช้สามารถอัปโหลดรูปโปรไฟล์ได้จากหน้า Profile (คลิกที่ avatar หรือปุ่มเปลี่ยนรูป)
+- รูปจะถูกอัปโหลดไปยัง Supabase Storage bucket `avatars`
+- Path ใน Storage: `{user_id}/{timestamp}.{ext}`
+- ขนาดไฟล์สูงสุด 2MB, รองรับไฟล์ .jpg, .jpeg, .png
+- รูปจะถูก crop เป็นสี่เหลี่ยมจตุรัส (1:1) ที่ client ก่อน upload
+- หลัง upload สำเร็จ `avatar_url` ในตาราง `profiles` จะถูกอัปเดต
+- Header Dashboard แสดง avatar ที่ upload แทน icon emoji (ถ้ามี) หรือ fallback เป็น 👶/👦/👧 ตาม child_gender
+- หน้า Profile แสดง avatar ที่ upload ใน profile card แทน 👩 hardcoded
+
 ---
 
 ## 5. Profile Feature — Data Model
@@ -303,6 +314,7 @@ flowchart LR
 | `child_name` | `text` | ชื่อลูก (แก้ไขที่หน้า Profile) |
 | `child_birthday` | `date` | วันเกิดลูก (แก้ไขที่หน้า Profile, nullable) |
 | `child_gender` | `text` | เพศลูก ('male'/'female', nullable) — ใช้กำหนด icon ที่ header dashboard |
+| `avatar_url` | `text` | URL รูปโปรไฟล์ใน Supabase Storage (nullable, v1.3.0) |
 | `created_at` | `timestamptz` | เวลาสร้าง |
 | `updated_at` | `timestamptz` | เวลาแก้ไขล่าสุด |
 
@@ -360,6 +372,53 @@ export function useExportPdf() {
 }
 ```
 
+### v1.3.0 Bug Fix: ปรับภาพ PDF ให้พอดีในหน้าเดียว
+
+**ปัญหา:** ในบางเดือนที่มี 5–6 สัปดาห์ + Legend จำนวน 7 รายการ ภาพรวมของปฏิทิน + Legend เมื่อ capture ด้วย html2canvas scale 2 แล้วมีสัดส่วนสูงเกินกว่าหน้ากระดาษ A4 (portrait) ทำให้เนื้อหาตกไปหน้า 2
+
+**สาเหตุ:**
+- หน้า A4 portrait มีพื้นที่ใช้สอยประมาณ 190×277 มม. (หลังหัก margin 10 มม. × 2)
+- เนื้อหาปฏิทิน (CalendarGrid + Legend) เมื่อ scaled เป็น 190 มม. กว้าง อาจสูงเกิน 277 มม.
+- โค้ดปัจจุบันใช้ `addImage` พร้อม pagination loop → ตกหน้า 2
+
+**แนวทางแก้ไข:**
+
+```js
+// ปรับให้ scale ภาพให้พอดีในหน้าเดียว
+// ถ้าความสูงเกิน ให้ลดสัดส่วนเพื่อให้ทุกอย่างอยู่ในหน้า A4 portrait
+async function exportCalendar(element, yearMonth) {
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    backgroundColor: '#ffffff',
+    useCORS: true,
+  })
+  const imgData = canvas.toDataURL('image/png')
+
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  const margin = 10
+  const maxWidth = pageWidth - margin * 2
+  const maxHeight = pageHeight - margin * 2
+
+  let imgWidth = maxWidth
+  let imgHeight = (canvas.height * imgWidth) / canvas.width
+
+  // ถ้าสูงเกิน → scale proportionally เพื่อให้พอดีในหน้าเดียว
+  if (imgHeight > maxHeight) {
+    imgHeight = maxHeight
+    imgWidth = (canvas.width * imgHeight) / canvas.height
+  }
+
+  // จัดกึ่งกลางในแนวนอน
+  const xOffset = (pageWidth - imgWidth) / 2
+  pdf.addImage(imgData, 'PNG', xOffset, margin, imgWidth, imgHeight)
+  pdf.save(`kidhealth-${yearMonth}.pdf`)
+}
+```
+
+**ผลลัพธ์:** เนื้อหาปฏิทิน + Legend จะถูกลดขนาดตามสัดส่วนเพื่อให้พอดีใน A4 portrait หน้าเดียว ไม่มีการตัดหน้า 2 อีก
+
 ---
 
 ## 7. Data Model (Supabase)
@@ -395,7 +454,86 @@ CREATE POLICY "Users can manage own logs"
 
 ---
 
-## 8. Environment Strategy
+## 8. Supabase Storage — Avatar Upload (v1.3.0)
+
+### Bucket: `avatars`
+
+สร้าง bucket ชื่อ `avatars` ใน Supabase Storage Dashboard (Public bucket)
+
+**Bucket Config:**
+- Name: `avatars`
+- Public: ✅ (allow public access to read)
+- File size limit: 2MB
+- Allowed MIME types: `image/jpeg`, `image/png`
+
+### RLS Policy สำหรับ Storage
+
+```sql
+-- ให้ user อัปโหลดรูปตัวเอง
+CREATE POLICY "Users can upload own avatars"
+  ON storage.objects
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    bucket_id = 'avatars'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- ให้ user อ่านรูปตัวเอง (และ public อ่านได้เพราะ bucket เป็น public)
+CREATE POLICY "Users can read own avatars"
+  ON storage.objects
+  FOR SELECT
+  TO authenticated
+  USING (
+    bucket_id = 'avatars'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- ให้ user อัปเดตรูปตัวเอง
+CREATE POLICY "Users can update own avatars"
+  ON storage.objects
+  FOR UPDATE
+  TO authenticated
+  USING (
+    bucket_id = 'avatars'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  )
+  WITH CHECK (
+    bucket_id = 'avatars'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- ให้ user ลบรูปตัวเอง
+CREATE POLICY "Users can delete own avatars"
+  ON storage.objects
+  FOR DELETE
+  TO authenticated
+  USING (
+    bucket_id = 'avatars'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+```
+
+### Upload Flow
+
+```
+User คลิก avatar / ปุ่มเปลี่ยนรูป
+  → เปิด file picker (accept="image/jpeg,image/png")
+  → validate ขนาด ≤ 2MB
+  → crop เป็น 1:1 (ใช้ canvas/css)
+  → upload ไปที่ storage/avatars/{user_id}/{timestamp}.{ext}
+  → ได้ public URL กลับมา
+  → อัปเดต profiles.avatar_url
+  → Header Dashboard + Profile card แสดงรูปใหม่
+```
+
+### Public URL Pattern
+
+```
+https://{project_id}.supabase.co/storage/v1/object/public/avatars/{user_id}/{filename}
+```
+
+## 9. Environment Strategy
 
 ### แนวคิดหลัก
 
@@ -475,7 +613,7 @@ VITE_APP_ENV=production
 
 ---
 
-## 9. Tech Stack
+## 10. Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -490,7 +628,7 @@ VITE_APP_ENV=production
 
 ---
 
-## 10. Project Structure
+## 11. Project Structure
 
 ```
 public/
@@ -544,7 +682,7 @@ src/
 
 ---
 
-## 11. Routes & Auth Guard
+## 12. Routes & Auth Guard
 
 | Path | Component | Auth Required | Notes |
 |---|---|---|---|
@@ -581,7 +719,7 @@ app.mount('#app')
 
 ---
 
-## 12. Constants: Symptom Map
+## 13. Constants: Symptom Map
 
 ```js
 // src/constants/symptoms.js
@@ -597,7 +735,7 @@ export const SYMPTOMS = [
 
 ---
 
-## 13. PWA — Progressive Web App
+## 14. PWA — Progressive Web App
 
 แอพรองรับการติดตั้งบน Home Screen ของมือถือ (Add to Home Screen)  
 ผ่าน **manifest.json** + **Service Worker (Workbox)** ที่สร้างโดย `vite-plugin-pwa`
@@ -628,7 +766,7 @@ export const SYMPTOMS = [
 
 ---
 
-## 14. Out of Scope (v1)
+## 15. Out of Scope (v1)
 
 - ❌ รองรับหลายโปรไฟล์เด็ก
 - ❌ Push notification

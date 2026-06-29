@@ -220,10 +220,14 @@ Tasks:
    - Add a "Loading…" disabled state while exporting
 4. Filename: `kidhealth-${year}-${pad(month)}.pdf`
 5. Add small print header inside the calendar (title + month label) so the PDF is self-explanatory
+6. **v1.3.0 Bug Fix:** ปรับ logic ใน `useExportPdf.js`:
+   - ถ้าภาพที่ capture สูงเกินกว่าหน้า A4 portrait → scale proportionally เพื่อให้ทุกอย่างอยู่ในหน้าเดียว
+   - ยกเลิก pagination loop (ไม่ต้องแบ่งหลายหน้า) — ใช้ `fit` หรือคำนวณ new width/height แทน
+   - จัดกึ่งกลางภาพในแนวนอน
 
 **Acceptance:**
 - Click Export → PDF downloads
-- PDF contains: month label, full calendar grid, legend, counts
+- PDF contains: month label, full calendar grid, legend, counts — **ทั้งหมดในหน้าเดียว**
 - Image quality is sharp (`scale: 2`)
 - Test on Chrome + Safari
 
@@ -283,6 +287,39 @@ Tasks:
 
 ---
 
+### Phase 7b — Avatar Upload (M7b, v1.3.0)
+**Goal:** User can upload profile picture (avatar) and see it on Header + Profile page.
+
+Tasks:
+1. **Database:** Add `avatar_url text` column to `profiles` table (nullable)
+2. **Supabase Storage:** สร้าง bucket `avatars` (public) + RLS policies สำหรับ CRUD ของ user ตัวเอง
+3. **Profile Store (`src/stores/profile.js`):**
+   - Add action `async uploadAvatar(file)` — อัปโหลดไฟล์ไปที่ `storage/avatars/{user_id}/{timestamp}.{ext}`
+   - Add action `async deleteAvatar()` — ลบรูปเก่า (ถ้ามี) แล้ว set `profiles.avatar_url = null`
+   - แก้ `fetchProfile()` และ `updateProfile()` ให้รองรับ `avatar_url`
+4. **Profile Page (`src/pages/ProfilePage.vue`):**
+   - Avatar section: แสดงรูปที่ upload (หรือ fallback emoji)
+   - ปุ่ม/overlay "เปลี่ยนรูปโปรไฟล์" → `<input type="file" accept="image/jpeg,image/png">`
+   - Validate ขนาด ≤ 2MB
+   - Crop รูปเป็น 1:1 (ใช้ canvas) ก่อน upload หรือใช้ CSS `object-fit: cover`
+   - Upload แล้วอัปเดต `avatar_url` ทันที + แสดง preview
+   - Delete avatar option (optional: explicit delete button)
+5. **Dashboard Header (`src/pages/DashboardPage.vue`):**
+   - Avatar link (`<router-link to="/profile" class="avatar">`) แสดง `<img>` ถ้ามี `avatar_url` หรือ fallback emoji
+6. **Styling:**
+   - Avatar image: `width: 44px; height: 44px; border-radius: 50%; object-fit: cover;`
+   - Profile card avatar: ขนาดใหญ่ขึ้น ~80px, `object-fit: cover`
+   - Upload overlay/hover state
+
+**Acceptance:**
+- User can upload JPG/PNG ≤ 2MB from Profile page
+- Uploaded avatar shows immediately on Profile card header
+- Header Dashboard shows uploaded avatar (replaces emoji icon)
+- Reload page → avatar persists
+- Can upload new avatar (replaces old)
+- Error shown if file too large or wrong type
+- Supabase Storage bucket `avatars` has RLS policies working
+
 ### Phase 8 — Deploy to Vercel (M8)
 **Goal:** Production deploy with separate dev preview.
 
@@ -327,6 +364,14 @@ Tasks:
 | 14 | Register with first_name + last_name → profile auto-created | Profile shows name | ☐ |
 | 15 | Edit child_name + child_birthday → save → reload | Values persist | ☐ |
 | 16 | Age auto-calculated correctly from child_birthday | Shows "X ปี Y เดือน" | ☐ |
+| 17 | PDF export — content fits in 1 page (no page 2) | PDF shows all data on single page | ☐ |
+| 18 | Upload avatar from Profile page (JPG ≤ 2MB) | Avatar shows in preview + saves | ☐ |
+| 19 | Dashboard header shows uploaded avatar | Avatar replaces emoji icon | ☐ |
+| 20 | Upload PNG avatar | Works same as JPG | ☐ |
+| 21 | Upload file > 2MB → error message | Error toast shows | ☐ |
+| 22 | Upload file non-image (.pdf) → error | File picker limits to images | ☐ |
+| 23 | Reload page after avatar upload | Avatar persists (profiles.avatar_url) | ☐ |
+| 24 | Upload new avatar to replace old one | Old image deleted from Storage, new one shows | ☐ |
 
 #### 9.2 Supabase Verification
 - RLS test: `profiles` — user can only see own profile
@@ -527,6 +572,10 @@ await supabase
 | RLS `using` vs `with check` confusion | Insert blocked for own user | Use both: `USING` for select/update/delete, `WITH CHECK` for insert/update |
 | Vercel free tier Supabase pause | Dev/test data lost | Acceptable for v1; document |
 | Race: `getSession()` resolves after first route render | Brief redirect glitch | Await `auth.init()` in `main.js` before `app.mount` |
+| Avatar upload file too large | Upload failure, bad UX | Validate ≤ 2MB client-side before upload |
+| Supabase Storage RLS misconfigured | Users can't upload/see avatars | Test CRUD policies with service_role key |
+| `html2canvas` clip content at page boundary | PDF content cut off | Remove pagination loop; use `fit` scaling to keep all content in 1 page |
+| Avatar image distortion | Bad visual | Use `object-fit: cover` + 1:1 crop at client |
 
 ---
 
@@ -560,8 +609,9 @@ await supabase
 | 7 | M5 (PDF export) |
 | 8 | M6 (polish + toast + a11y) |
 | 9 | M7 (Profile: profiles table, store, register fields, editable child info) |
-| 10 | M8 (Vercel deploy) |
-| 11 | M9 (QA matrix) + bug fixes |
+| 10 | M7b (Avatar upload: Storage bucket, upload UI, header display) |
+| 11 | M5 Bug Fix (PDF fit on 1 page) + M8 (Vercel deploy) |
+| 12 | M9 (QA matrix) + bug fixes |
 
 ---
 
@@ -602,4 +652,4 @@ await supabase
 | 1.0.2 | แก้ UI padding, เพิ่ม loading spinner |
 | 1.1.0 | เพิ่ม export CSV, เพิ่มหน้า Settings |
 | 1.2.0 | เพิ่ม symptom RUNNY_GREEN, child_gender, greeting, PWA icon fix, date validation |
-| 2.0.0 | เปลี่ยน DB schema, redesign ใหม่ทั้งตัว |
+| 1.3.0 | เพิ่มอัปโหลดรูปโปรไฟล์, แก้ PDF export ตกหน้า 2 | |
