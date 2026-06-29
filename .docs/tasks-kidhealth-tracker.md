@@ -17,54 +17,56 @@
 
 ```
 KidHealthTracker/
-├── .env.development          # dev keys
+├── .env.development          # dev keys (committed)
 ├── .env.production           # prod keys (gitignored)
 ├── .env.local                # override (gitignored)
 ├── .gitignore
-├── index.html                # PWA meta tags + manifest link
+├── index.html                # PWA meta tags + Sarabun font + manifest
 ├── package.json
-├── vite.config.js            # Vue + Tailwind + VitePWA plugins
-├── vercel.json               # SPA fallback
+├── vite.config.js            # Vue + Tailwind v4 + VitePWA plugins + @ alias
+├── vercel.json               # SPA fallback rewrites
 ├── public/
 │   ├── favicon-v2.svg
-│   ├── pwa-icon-v2.svg       # PWA home screen icon (SVG)
+│   ├── pwa-icon-v2.svg       # PWA home screen icon (SVG, purpose: maskable)
+│   ├── pwa-icon-152.png      # iOS iPad Retina A2HS icon
+│   ├── pwa-icon-180.png      # iOS iPhone Retina A2HS icon
 │   ├── pwa-icon-192.png      # PWA icon 192×192 PNG
-│   └── pwa-icon-512.png      # PWA icon 512×512 PNG
+│   └── pwa-icon-512.png      # PWA icon 512×512 PNG (purpose: maskable)
 └── src/
-    ├── main.js               # bootstrap: auth.init() → router → mount
-    ├── App.vue               # loading splash + router-view + BottomNav
-    ├── style.css             # CSS entry
+    ├── main.js               # bootstrap: Pinia → auth.init() → router → mount
+    ├── App.vue               # loading splash + router-view + BottomNav + ToastContainer
+    ├── style.css             # @import entry: tokens → typography → base → components → tailwindcss
     ├── lib/
-    │   └── supabase.js
+    │   └── supabase.js       # createClient from env vars
     ├── router/
-    │   └── index.js          # routes + auth guard beforeEach
+    │   └── index.js          # 8 routes + auth guard beforeEach
     ├── stores/
-    │   ├── auth.js
-    │   ├── logs.js
-    │   └── profile.js
+    │   ├── auth.js           # session, user, loading, init/signIn/signUp/signOut
+    │   ├── logs.js           # fetchForDate, fetchMonth, upsertLog
+    │   └── profile.js        # fetch, update, uploadAvatar (cache-busting)
     ├── pages/
     │   ├── LoginPage.vue
-    │   ├── RegisterPage.vue
+    │   ├── RegisterPage.vue  # first_name + last_name fields
     │   ├── VerifyEmailPage.vue
-    │   ├── DashboardPage.vue
-    │   ├── SummaryPage.vue
-    │   └── ProfilePage.vue
+    │   ├── DashboardPage.vue # date picker, 6 symptom cards, avatar header
+    │   ├── SummaryPage.vue   # month picker, calendar, legend, export PDF
+    │   └── ProfilePage.vue   # profile card, avatar upload, child info, gender, age calc
     ├── components/
-    │   ├── BottomNav.vue
-    │   ├── CalendarGrid.vue
-    │   ├── Legend.vue
-    │   ├── MonthPicker.vue
-    │   ├── SymptomCard.vue
+    │   ├── BottomNav.vue     # 3-tab bottom nav (Dashboard/Summary/Profile)
+    │   ├── CalendarGrid.vue  # 7-col color-coded calendar
+    │   ├── Legend.vue        # symptom legend + day counts
+    │   ├── MonthPicker.vue   # ← month year → navigation
+    │   ├── SymptomCard.vue   # colored radio card with emoji
     │   └── ToastContainer.vue
     ├── composables/
-    │   ├── useExportPdf.js
-    │   └── useToast.js
+    │   ├── useExportPdf.js   # html2canvas + jsPDF (iOS full capture + multi-page)
+    │   └── useToast.js       # global toast state
     ├── constants/
-    │   └── symptoms.js
+    │   └── symptoms.js       # 6 symptoms: code, label, emoji, color, tint, border, cssClass
     └── styles/
-        ├── tokens.css
-        ├── typography.css
-        ├── base.css
+        ├── tokens.css        # design tokens (colors, spacing, shadows, radius)
+        ├── typography.css    # Sarabun type scale
+        ├── base.css          # reset, body, scroll, focus
         └── components/
             ├── button.css
             ├── input.css
@@ -102,7 +104,7 @@ KidHealthTracker/
 ### Tasks
 
 - [x] **M1.1** สร้าง dev project `kidhealth-dev` ใน Supabase dashboard
-- [ ] **M1.2** สร้าง prod project `kidhealth-prd` ใน Supabase dashboard (รอทีหลัง)
+- [x] **M1.2** สร้าง prod project `kidhealth-prd` ใน Supabase dashboard (URL: `njadmgqzywqqqbrmxssl.supabase.co`)
 - [x] **M1.3** รัน SQL migration ใน dev project (table + RLS + trigger + index)
 - [x] **M1.4** เปิด "Confirm email" ใน dev project
 - [x] **M1.5** สร้าง test user `test1@kidhealth.dev` (UUID: `e348debe-b557-4b6e-b48f-b245aad3f3d7`)
@@ -247,7 +249,7 @@ KidHealthTracker/
 - [x] **M8.6** สร้าง `public/pwa-icon.svg` — 512×512 SVG icon สำหรับ PWA
 - [x] **M8.7** อัปเดต `index.html` — manifest link, apple-touch-icon, mobile-web-app meta tags
 - [x] **M8.8** Verify: `npm run build` → PWA assets generated (`sw.js`, `manifest.webmanifest`)
-- [ ] **M8.9** 🐞 Bug: iOS Add to Home Screen Icon ไม่ขึ้น — ดูรายละเอียดด้านล่าง
+- [x] **M8.9** 🐞 Bug: iOS Add to Home Screen Icon ไม่ขึ้น — **Fixed:** เพิ่ม 180×180 + 152×152 PNG, เปลี่ยน apple-touch-icon จาก SVG → PNG
 
 ---
 
@@ -327,43 +329,43 @@ icons: [
 ### Tasks
 
 - [x] **M9.1** `git init` + commit + push to GitHub
-- [ ] **M9.2** Import project in Vercel
-- [ ] **M9.3** Set Environment Variables (Production = prod, Preview = dev)
-- [ ] **M9.4** Configure Production branch = `main`
-- [ ] **M9.5** Test: Production URL → prod Supabase / Preview URL → dev Supabase
+- [x] **M9.2** Import project in Vercel
+- [x] **M9.3** Set Environment Variables (Production = prod, Preview = dev)
+- [x] **M9.4** Configure Production branch = `main`
+- [x] **M9.5** Test: Production URL → prod Supabase / Preview URL → dev Supabase
 - [x] **M9.6** `vercel.json` (SPA fallback) — สร้างแล้ว
 
 ---
 
-## 🎯 Milestone 10 — QA / UAT
+## 🎯 Milestone 10 — QA / UAT (v1.0.0)
 
 **Est:** 1.5 days
 
 ### Test Matrix
 
-- [ ] **T1** Register new user → confirm email → redirect dashboard
-- [ ] **T2** Login wrong password → error message
-- [ ] **T3** Login correct → redirect dashboard
-- [ ] **T4** Save symptom first time → toast "บันทึกแล้ว ✓"
-- [ ] **T5** Reopen same date → pre-selected
-- [ ] **T6** Change saved value → upsert (1 row)
-- [ ] **T7** Pick future date → blocked
-- [ ] **T8** Switch month in Summary → loads new data
-- [ ] **T9** Counts add up → sum = days with logs
-- [ ] **T10** Export PDF → file downloads
-- [ ] **T11** Logout → session cleared → redirect /login
-- [ ] **T12** RLS: user A cannot see user B's rows → 0 rows
-- [ ] **T13** Mobile (375px) → all flows usable
-- [ ] **T14** Register with first_name + last_name → profile auto-created on first login
-- [ ] **T15** Edit child_name + child_birthday → save → reload → values persist
-- [ ] **T16** Age auto-calculated correctly from child_birthday
-- [ ] **T17** Open root `/` when not logged in → redirect `/login` (not Dashboard)
-- [ ] **T18** Register → receive email → click link → redirect `/login` (not localhost)
-- [ ] **T19** PWA: Chrome DevTools → Manifest valid, Service Worker registered
-- [ ] **T20** PWA: iOS Safari → "Add to Home Screen" shows app icon + name
-- [ ] **T21** เลือกเพศลูก (ชาย/หญิง) → header dashboard แสดง icon ตรงเพศ
-- [ ] **T22** บันทึกวันในอนาคต → แสดง error "ไม่สามารถบันทึกวันในอนาคตได้"
-- [ ] **T23** PWA manifest ต้อง valid (manifest.webmanifest มี PNG + SVG icons)
+- [x] **T1** Register new user → confirm email → redirect dashboard
+- [x] **T2** Login wrong password → error message
+- [x] **T3** Login correct → redirect dashboard
+- [x] **T4** Save symptom first time → toast "บันทึกแล้ว ✓"
+- [x] **T5** Reopen same date → pre-selected
+- [x] **T6** Change saved value → upsert (1 row)
+- [x] **T7** Pick future date → blocked
+- [x] **T8** Switch month in Summary → loads new data
+- [x] **T9** Counts add up → sum = days with logs
+- [x] **T10** Export PDF → file downloads
+- [x] **T11** Logout → session cleared → redirect /login
+- [x] **T12** RLS: user A cannot see user B's rows → 0 rows
+- [x] **T13** Mobile (375px) → all flows usable
+- [x] **T14** Register with first_name + last_name → profile auto-created on first login
+- [x] **T15** Edit child_name + child_birthday → save → reload → values persist
+- [x] **T16** Age auto-calculated correctly from child_birthday
+- [x] **T17** Open root `/` when not logged in → redirect `/login` (not Dashboard)
+- [x] **T18** Register → receive email → click link → redirect `/login` (not localhost)
+- [x] **T19** PWA: Chrome DevTools → Manifest valid, Service Worker registered
+- [x] **T20** PWA: iOS Safari → "Add to Home Screen" shows app icon + name
+- [x] **T21** เลือกเพศลูก (ชาย/หญิง) → header dashboard แสดง icon ตรงเพศ
+- [x] **T22** บันทึกวันในอนาคต → แสดง error "ไม่สามารถบันทึกวันในอนาคตได้"
+- [x] **T23** PWA manifest ต้อง valid (manifest.webmanifest มี PNG + SVG icons)
 
 ---
 
@@ -380,24 +382,22 @@ icons: [
 
 ---
 
----
- 
-## 🎯 Milestone 10 — Post-Launch Improvements (v1.2.0)
+## 🎯 Milestone 10b — Post-Launch Improvements (v1.2.0)
  
 **Est:** 0.5 day
  
 ### Tasks
  
-- [x] **M10.1** เพิ่ม greeting "พ่อแม่น้อง{ชื่อลูก}" แทน "คุณพ่อคุณแม่ของ{ชื่อลูก}"
-- [x] **M10.2** เพิ่ม child_gender field + gender selector ใน ProfilePage
-- [x] **M10.3** แสดง icon เด็กผู้ชาย/ผู้หญิงที่ header dashboard ตาม child_gender
-- [x] **M10.4** แก้ไข: `today` เป็น computed ref ป้องกันค่าเก่าค้าง
-- [x] **M10.5** แก้ไข: เพิ่ม `date > today` validation ใน logs store (ป้องกันบันทึกวันอนาคต)
-- [x] **M10.6** แก้ไข: PWA manifest filename (manifest.json → manifest.webmanifest)
-- [x] **M10.7** เพิ่ม PNG icons (192×192 + 512×512) สำหรับ PWA compatibility
-- [x] **M10.8** เปลี่ยน T00:00:00 → T12:00:00 ป้องกัน timezone edge case
-- [x] **M10.9** เพิ่ม `:max="today"` ใน birthday input ของ ProfilePage
-- [x] **M10.10** Bump version 1.2.0, อัปเดต docs ทั้งหมด
+- [x] **M10b.1** เพิ่ม greeting "พ่อแม่น้อง{ชื่อลูก}" แทน "คุณพ่อคุณแม่ของ{ชื่อลูก}"
+- [x] **M10b.2** เพิ่ม child_gender field + gender selector ใน ProfilePage
+- [x] **M10b.3** แสดง icon เด็กผู้ชาย/ผู้หญิงที่ header dashboard ตาม child_gender
+- [x] **M10b.4** แก้ไข: `today` เป็น computed ref ป้องกันค่าเก่าค้าง
+- [x] **M10b.5** แก้ไข: เพิ่ม `date > today` validation ใน logs store (ป้องกันบันทึกวันอนาคต)
+- [x] **M10b.6** แก้ไข: PWA manifest filename (manifest.json → manifest.webmanifest)
+- [x] **M10b.7** เพิ่ม PNG icons (192×192 + 512×512) สำหรับ PWA compatibility
+- [x] **M10b.8** เปลี่ยน T00:00:00 → T12:00:00 ป้องกัน timezone edge case
+- [x] **M10b.9** เพิ่ม `:max="today"` ใน birthday input ของ ProfilePage
+- [x] **M10b.10** Bump version 1.2.0, อัปเดต docs ทั้งหมด
 
 ---
 
@@ -596,23 +596,23 @@ icons: [
 
 ### Tasks
 
-- [ ] **M15.1** 🐞 **Bug: Avatar ไม่ reload หลัง upload** (Browser Cache)
+- [x] **M15.1** 🐞 **Bug: Avatar ไม่ reload หลัง upload** (Browser Cache)
   - **สาเหตุ:** `uploadAvatar()` ใช้ path `{userId}/avatar` คงที่ + `upsert: true` → public URL ไม่เปลี่ยน → browser แสดงรูปเก่าที่ cached
   - **Fix:** เพิ่ม `?t=${Date.now()}` ต่อท้าย publicUrl ก่อน set `this.profile.avatar_url`
   - **Files:** `src/stores/profile.js` (บรรทัด ~76)
 
-- [ ] **M15.2** 🐞 **Bug: เลือกรูปจาก Album iOS ไม่ได้**
+- [x] **M15.2** 🐞 **Bug: เลือกรูปจาก Album iOS ไม่ได้**
   - **สาเหตุ:** `<input accept="image/jpeg,image/png">` ไม่รวม `image/heic` / `image/heif` → iOS file picker กรอง HEIC photos ออก
   - **Fix:** เพิ่ม `image/heic,image/heif` ใน `accept` attribute
   - **Files:** `src/pages/ProfilePage.vue` (บรรทัด 198)
 
-- [ ] **M15.3** 🐞 **HEIC→JPEG conversion support**
+- [x] **M15.3** 🐞 **HEIC→JPEG conversion support**
   - **สาเหตุ:** แม้ iOS จะ allow HEIC file ได้ แต่ Supabase Storage bucket จำกัด MIME types + `<canvas>.toBlob` ไม่ support HEIC output
   - **Fix:** ใช้ `heic2any` library แปลง HEIC เป็น JPEG ก่อน upload
   - **Files:** `src/pages/ProfilePage.vue` (handleFileChange)
   - **Dependency:** `heic2any` (npm)
 
-- [ ] **M15.4** ทดสอบ:
+- [x] **M15.4** ทดสอบ:
   - อัปโหลดรูป → preview อัปเดตทันที (ไม่ค้างรูปเก่า)
   - อัปโหลด HEIC จาก iOS file picker → แปลงเป็น JPEG → upload สำเร็จ
   - อัปโหลด JPEG/PNG ปกติ → ยังทำงานเหมือนเดิม

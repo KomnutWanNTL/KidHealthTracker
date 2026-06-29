@@ -55,23 +55,23 @@
 
 ### วิธีใส่ใน env
 
-เปิดไฟล์ `.env.development` แล้ววาง:
+เปิดไฟล์ `.env.development` แล้ววาง (ค่าจริงจาก dev project):
 
 ```env
-VITE_SUPABASE_URL=https://kidhealth-dev.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...dev...key
+VITE_SUPABASE_URL=https://qkgpacyhjuexhbcsyyxo.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_4ieVsF10rUhanyucfuZeyw_IhXprMFL
 VITE_APP_ENV=development
 ```
 
-เปิดไฟล์ `.env.production` แล้ววาง:
+เปิดไฟล์ `.env.production` แล้ววาง (ค่าจริงจาก prod project — **ห้าม commit**):
 
 ```env
-VITE_SUPABASE_URL=https://kidhealth-prod.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...prod...key
+VITE_SUPABASE_URL=https://njadmgqzywqqqbrmxssl.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_WoNoXohgC67-pFY2NXAT6A_0Lon-K4a
 VITE_APP_ENV=production
 ```
 
-> ⚠️ `.env.production` **ห้าม commit ขึ้น Git** — เก็บไว้ local + ใส่ใน Vercel Dashboard ทีหลัง
+> ⚠️ `.env.production` **ห้าม commit ขึ้น Git** (อยู่ใน `.gitignore` อยู่แล้ว) — เก็บไว้ local + ใส่ใน Vercel Dashboard ทีหลัง
 
 ---
 
@@ -88,7 +88,7 @@ VITE_APP_ENV=production
 -- KidHealth Tracker: daily_logs table + RLS
 -- ============================================
 
--- 1. สร้างตาราง daily_logs
+-- 1. สร้างตาราง daily_logs (รองรับ 6 symptoms)
 create table public.daily_logs (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references auth.users(id) on delete cascade,
@@ -98,7 +98,7 @@ create table public.daily_logs (
   updated_at  timestamptz not null default now(),
   constraint daily_logs_user_date_unique unique (user_id, log_date),
   constraint daily_logs_symptom_check check (
-    symptom in ('NORMAL','RUNNY_CLEAR','FEVER','FEVER_RUNNY_CLEAR','FEVER_RUNNY_GREEN')
+    symptom in ('NORMAL','RUNNY_CLEAR','RUNNY_GREEN','FEVER','FEVER_RUNNY_CLEAR','FEVER_RUNNY_GREEN')
   )
 );
 
@@ -139,8 +139,12 @@ create table public.profiles (
   last_name      text not null default '',
   child_name     text not null default '',
   child_birthday date,
+  child_gender   text,
+  avatar_url     text,
   created_at     timestamptz not null default now(),
-  updated_at     timestamptz not null default now()
+  updated_at     timestamptz not null default now(),
+  constraint profiles_child_gender_check
+    check (child_gender is null or child_gender in ('male', 'female'))
 );
 
 -- 7. เปิด RLS
@@ -160,8 +164,6 @@ create trigger trg_profiles_updated_at
   for each row execute function public.set_updated_at();
 ```
 
-> **หมายเหตุ:** ถ้ารัน migration ซ้ำรอบสอง (ตอนเพิ่ม profiles table) ให้คัดลอกเฉพาะส่วน `-- 6.` ถึง `-- 9.` ไปรันเพิ่ม ไม่ต้องรัน daily_logs ซ้ำ
-
 ### ✅ ถ้ารันสำเร็จ จะเห็นข้อความ:
 
 ```
@@ -169,6 +171,97 @@ Success. No rows returned
 ```
 
 หรือ list of success messages ตามจำนวน statement
+
+---
+
+## 📌 Step 4b: เพิ่ม Symptom RUNNY_GREEN (ถ้า migration หลักยังไม่มี)
+
+> **เฉพาะกรณี:** ถ้า migration หลัก (Step 4) รันไปก่อนที่ `RUNNY_GREEN` จะถูกเพิ่มเข้าไป
+
+เปิดไฟล์ `.docs/supabase-migration-add-runny-green.sql` ใน SQL Editor แล้วรัน:
+
+```sql
+alter table public.daily_logs
+  drop constraint if exists daily_logs_symptom_check;
+
+alter table public.daily_logs
+  add constraint daily_logs_symptom_check check (
+    symptom in ('NORMAL','RUNNY_CLEAR','RUNNY_GREEN','FEVER','FEVER_RUNNY_CLEAR','FEVER_RUNNY_GREEN')
+  );
+```
+
+---
+
+## 📌 Step 4c: เพิ่ม child_gender column
+
+เปิดไฟล์ `.docs/supabase-migration-add-child-gender.sql` ใน SQL Editor แล้วรัน:
+
+```sql
+alter table public.profiles
+  add column if not exists child_gender text;
+
+alter table public.profiles
+  add constraint profiles_child_gender_check
+  check (child_gender is null or child_gender in ('male', 'female'));
+```
+
+---
+
+## 📌 Step 4d: เพิ่ม avatar_url column
+
+เปิดไฟล์ `.docs/supabase/002_add_avatar_url.sql` ใน SQL Editor แล้วรัน:
+
+```sql
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS avatar_url text;
+```
+
+---
+
+## 📌 Step 4e: สร้าง Storage bucket `avatars` + RLS policies
+
+> ต้องทำทั้ง dev และ prod project (เฉพาะตอนตั้งค่าแรกเริ่ม)
+
+เปิดไฟล์ `.docs/supabase/003_storage_avatars.sql` ใน SQL Editor แล้วรัน:
+
+```sql
+-- สร้าง bucket (public, max 2MB, allow image/jpeg + image/png)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'avatars', 'avatars', true, 2097152,
+  ARRAY['image/jpeg', 'image/png']::text[]
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- RLS: INSERT — user upload to own folder only
+CREATE POLICY "Users can upload own avatar"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'avatars'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- RLS: SELECT — anyone can read (public bucket)
+CREATE POLICY "Anyone can read avatars"
+ON storage.objects FOR SELECT TO authenticated
+USING (bucket_id = 'avatars');
+
+-- RLS: UPDATE — user can update own avatar
+CREATE POLICY "Users can update own avatar"
+ON storage.objects FOR UPDATE TO authenticated
+USING (
+  bucket_id = 'avatars'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- RLS: DELETE — user can delete own avatar
+CREATE POLICY "Users can delete own avatar"
+ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id = 'avatars'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+```
 
 ---
 
@@ -236,19 +329,21 @@ select * from public.daily_logs order by log_date;
 
 ## 📌 Step 7: สร้าง Project `kidhealth-prod` (สำหรับ Production)
 
-> ทำซ้ำ **Step 1, 3, 4** อีกครั้ง สำหรับ project ที่สอง
+> ทำซ้ำ **Step 1, 3, 4, 4e** อีกครั้ง สำหรับ project ที่สอง  
+> (Step 4e = Storage bucket เป็น optional แต่แนะนำให้ตั้ง)
 
 ข้อแตกต่างสำหรับ prod:
 
 | หัวข้อ | Dev | Prod |
 |---|---|---|
 | Project name | `kidhealth-dev` | `kidhealth-prod` |
-| Region | Singapore | Singapore (หรือใกล้ผู้ใช้จริง) |
-| Confirm email | ✅ เปิด | ✅ เปิด |
+| Region | Singapore (`ap-southeast-1`) | Singapore (`ap-southeast-1`) |
+| Confirm email | ✅ เปิด | ✅ เปิด (แนะนำ) |
 | Test users | ✅ มี | ❌ ไม่ต้องมี |
 | Dummy data | ✅ มี | ❌ ไม่ต้องมี |
 | API key ใน `.env.development` | ✅ ใช้ของ dev | ❌ |
 | API key ใน `.env.production` | ❌ | ✅ ใช้ของ prod |
+| Storage bucket `avatars` | ✅ ตั้ง (Step 4e) | ✅ ตั้ง (Step 4e) |
 
 ---
 
@@ -285,11 +380,12 @@ select * from public.daily_logs;
 
 - [ ] มี 2 projects ใน Supabase dashboard: `kidhealth-dev` + `kidhealth-prod`
 - [ ] `.env.development` มีค่า URL + anon key ของ dev project
-- [ ] `.env.production` มีค่า URL + anon key ของ prod project (เก็บ local ไว้)
-- [ ] `daily_logs` table ถูกสร้างทั้ง 2 projects
-- [ ] `profiles` table ถูกสร้างทั้ง 2 projects
+- [ ] `.env.production` มีค่า URL + anon key ของ prod project (เก็บ local ไว้, gitignored)
+- [ ] `daily_logs` table ถูกสร้างทั้ง 2 projects (พร้อม CHECK constraint 6 symptoms)
+- [ ] `profiles` table ถูกสร้างทั้ง 2 projects (พร้อม child_gender + avatar_url columns)
 - [ ] RLS policies ถูกเปิดทั้ง 2 projects (daily_logs + profiles)
-- [ ] Confirm email เปิดใน dev project
+- [ ] Storage bucket `avatars` สร้าง + RLS policies (ทั้ง 2 projects)
+- [ ] Confirm email เปิดใน dev project (และ prod ด้วย ถ้าต้องการ)
 - [ ] Test user + dummy data พร้อมใน dev
 
 ---
@@ -303,3 +399,5 @@ select * from public.daily_logs;
 | `insufficient_privs` | ไม่ได้ใส่ `with check` | รัน migration ใหม่ให้ครบ |
 | Confirm email ไม่ส่ง | ไม่ได้เปิด toggle | Auth → Providers → Email → Confirm email = ON |
 | Anon key ไม่ทำงาน | คัดลอกไม่ครบ | เช็คใน Settings → API → anon key ทั้งบรรทัด |
+| Avatar upload fails (401) | RLS Storage policy ไม่ถูกต้อง | รัน `003_storage_avatars.sql` อีกครั้ง |
+| Avatar upload fails (413) | File ใหญ่เกิน 2MB | Client-side compress อยู่แล้ว (limit 700KB); เช็ค bucket config |

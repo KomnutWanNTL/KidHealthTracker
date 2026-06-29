@@ -1,7 +1,7 @@
 # 🗂️ Implementation Plan: KidHealth Tracker
 
 > **Source:** `requirements-kidhealth-tracker.md` (v1)
-> **Stack:** Vue 3 (Composition API) · Vite · Supabase (Auth + Postgres) · Vercel · Pinia · Tailwind/PrimeVue · jsPDF + html2canvas
+> **Stack:** Vue 3 (Composition API) · Vite · Supabase (Auth + Postgres) · Vercel · Pinia · Tailwind CSS v4 · jsPDF + html2canvas · vite-plugin-pwa
 > **Estimated Effort:** 10–14 working days (solo developer)
 
 ---
@@ -31,8 +31,8 @@
 
 Tasks:
 1. `npm create vite@latest kidhealth-tracker -- --template vue`
-2. Install: `vue-router pinia @supabase/supabase-js tailwindcss postcss autoprefixer jspdf html2canvas`
-3. `npx tailwindcss init -p` → configure `content: ["./index.html","./src/**/*.{vue,js}"]`
+2. Install: `vue-router pinia @supabase/supabase-js tailwindcss @tailwindcss/vite jspdf html2canvas`
+3. Add `@tailwindcss/vite` plugin in `vite.config.js` + `@import "tailwindcss"` in `style.css` (Tailwind v4 CSS-first config — no postcss.config.js or tailwind.config.js needed)
 4. Create env files: `.env.development`, `.env.production`, `.env.local` (gitignored)
 5. Create `src/lib/supabase.js` reading from `import.meta.env.VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`
 6. Verify `npm run dev` boots, env shows correct value in console
@@ -148,7 +148,7 @@ Tasks:
 4. `src/pages/DashboardPage.vue`
    - State: `selectedDate` (default today, max = today)
    - On mount / date change: `logs.fetchForDate(selectedDate)` → set `selectedSymptom` from result
-   - Layout per spec mockup: 5 SymptomCards in 2-column grid (last row full-width)
+    - Layout per spec mockup: 6 SymptomCards in 2-column grid (2 rows × 3 columns)
    - "บันทึก" button disabled until symptom selected
    - On save: `logs.upsertLog()` → toast "บันทึกแล้ว ✓" / error toast on failure
    - Link to `/summary`
@@ -184,7 +184,7 @@ Tasks:
 3. `src/pages/SummaryPage.vue`
    - State: `year`, `month` (default current)
    - On change: `logs.fetchMonth(year, month)` → render CalendarGrid
-   - Legend: 5 rows from `SYMPTOMS`
+    - Legend: 6 rows from `SYMPTOMS`
    - Counts: tally each symptom from `monthLogs` → display `🟢 ปกติ: 18 วัน`, etc.
    - "Export PDF" button → calls `useExportPdf().exportCalendar(calendarRef, 'YYYY-MM')`
    - Header with Logout, link back to Dashboard
@@ -351,14 +351,14 @@ Tasks:
 #### 9.1 Test Matrix
 
 | # | Scenario | Expected | Status |
-|---|---|---|---|
+|---|---|---|---|---|
 | 1 | Register new user, confirm email | Redirects to dashboard | ☐ |
 | 2 | Login wrong password | Error message shown | ☐ |
 | 3 | Login correct | Redirects to dashboard | ☐ |
 | 4 | Save symptom first time | Toast "บันทึกแล้ว ✓" | ☐ |
 | 5 | Reopen same date | Pre-selected | ☐ |
 | 6 | Change saved value | Upsert works (1 row total) | ☐ |
-| 7 | Pick future date | Blocked | ☐ |
+| 7 | Pick future date | Blocked + error toast | ☐ |
 | 8 | Switch month in Summary | Loads new data | ☐ |
 | 9 | Counts add up | sum = days with logs | ☐ |
 | 10 | Export PDF | File downloads, layout intact | ☐ |
@@ -367,15 +367,22 @@ Tasks:
 | 13 | Mobile (375px) | All flows usable | ☐ |
 | 14 | Register with first_name + last_name → profile auto-created | Profile shows name | ☐ |
 | 15 | Edit child_name + child_birthday → save → reload | Values persist | ☐ |
-| 16 | Age auto-calculated correctly from child_birthday | Shows "X ปี Y เดือน" | ☐ |
-| 17 | PDF export — content fits in 1 page (no page 2) | PDF shows all data on single page | ☐ |
-| 18 | Upload avatar from Profile page (JPG ≤ 2MB) | Avatar shows in preview + saves | ☐ |
-| 19 | Dashboard header shows uploaded avatar | Avatar replaces emoji icon | ☐ |
-| 20 | Upload PNG avatar | Works same as JPG | ☐ |
-| 21 | Upload file > 2MB → error message | Error toast shows | ☐ |
-| 22 | Upload file non-image (.pdf) → error | File picker limits to images | ☐ |
-| 23 | Reload page after avatar upload | Avatar persists (profiles.avatar_url) | ☐ |
-| 24 | Upload new avatar to replace old one | Old image deleted from Storage, new one shows | ☐ |
+| 16 | Age auto-calculated correctly from child_birthday | Shows "X ปี Y เดือน Z วัน" | ☐ |
+| 17 | Select child gender (male/female) | Dashboard header shows correct emoji | ☐ |
+| 18 | PDF export — content fits in 1 page (no page 2) | PDF shows all data on single page | ☐ |
+| 19 | PDF export on iOS PWA (A2HS) | Content not cropped, multi-page if needed | ☐ |
+| 20 | Upload avatar from Profile page (JPG ≤ 700KB) | Avatar shows in preview + saves | ☐ |
+| 21 | Dashboard header shows uploaded avatar | Avatar replaces emoji icon | ☐ |
+| 22 | Upload PNG avatar | Works same as JPG | ☐ |
+| 23 | Upload avatar > 700KB → auto-compress | Image compressed and upload succeeds | ☐ |
+| 24 | Upload file non-image (.pdf) → error | File picker limits to images | ☐ |
+| 25 | Reload page after avatar upload | Avatar persists (profiles.avatar_url) | ☐ |
+| 26 | Upload new avatar → old one overwritten | Path `{userId}/avatar` fixed, upsert works | ☐ |
+| 27 | Avatar cache-busting: re-upload → new image shows | `?t={timestamp}` bypasses browser cache | ☐ |
+| 28 | iOS HEIC photo → upload from album → converts to JPEG | File picker accepts HEIC, conversion works | ☐ |
+| 29 | Summary: Counts match calendar color cells | Counted values match visible cells | ☐ |
+| 30 | PWA: Chrome DevTools manifest valid | Manifest + SW registered | ☐ |
+| 31 | PWA: iOS Add to Home Screen shows icon | apple-touch-icon PNG shows correctly | ☐ |
 
 #### 9.2 Supabase Verification
 - RLS test: `profiles` — user can only see own profile
@@ -392,49 +399,63 @@ Tasks:
 ## 2. File-Level Implementation Map
 
 ```
-kidhealth-tracker/
-├── .env.development
-├── .env.production          (gitignored)
-├── .env.local               (gitignored)
+KidHealthTracker/
+├── .env.development          # dev Supabase keys (committed)
+├── .env.production           # prod keys (gitignored)
+├── .env.local                # local override (gitignored)
 ├── .gitignore
-├── index.html
+├── index.html                # PWA meta tags + Sarabun font + manifest
 ├── package.json
-├── postcss.config.js
-├── tailwind.config.js
-├── vite.config.js
-├── vercel.json              (optional)
+├── vite.config.js            # Vue + Tailwind v4 + VitePWA plugins, @ alias
+├── vercel.json               # SPA fallback rewrites
+├── public/
+│   ├── favicon-v2.svg
+│   ├── pwa-icon-v2.svg
+│   ├── pwa-icon-{180,152,192,512}.png
+│   └── ...
 └── src/
-    ├── main.js
-    ├── App.vue
+    ├── main.js               # bootstrap: Pinia → auth.init() → router → mount
+    ├── App.vue               # loading splash + router-view + BottomNav + ToastContainer
+    ├── style.css             # @import all CSS + tailwindcss
     ├── assets/
-    │   └── main.css         (Tailwind directives)
-    ├── components/
-    │   ├── SymptomCard.vue
-    │   ├── CalendarGrid.vue
-    │   ├── MonthPicker.vue
-    │   ├── Legend.vue
-    │   ├── ToastContainer.vue
-    │   └── AppHeader.vue
-    ├── composables/
-    │   ├── useExportPdf.js
-    │   └── useToast.js
-    ├── constants/
-    │   └── symptoms.js
     ├── lib/
-    │   └── supabase.js
+    │   └── supabase.js       # createClient from env vars
+    ├── router/
+    │   └── index.js          # 8 routes + auth guard beforeEach
+    ├── stores/
+    │   ├── auth.js           # session, user, loading, init/signIn/signUp/signOut
+    │   ├── logs.js           # fetchForDate, fetchMonth, upsertLog
+    │   └── profile.js        # fetch, update, uploadAvatar
     ├── pages/
     │   ├── LoginPage.vue
-    │   ├── RegisterPage.vue
-    │   ├── DashboardPage.vue
-    │   ├── SummaryPage.vue
-    │   ├── ProfilePage.vue
-    │   └── VerifyEmailPage.vue
-    ├── router/
-    │   └── index.js
-    └── stores/
-        ├── auth.js
-        ├── logs.js
-        └── profile.js
+    │   ├── RegisterPage.vue  # first_name + last_name fields
+    │   ├── VerifyEmailPage.vue
+    │   ├── DashboardPage.vue # date picker, 6 symptom cards, avatar header
+    │   ├── SummaryPage.vue   # month picker, calendar, legend, export PDF
+    │   └── ProfilePage.vue   # profile card, avatar upload, child info, gender, age
+    ├── components/
+    │   ├── BottomNav.vue     # 3-tab bottom navigation
+    │   ├── CalendarGrid.vue  # 7-col color-coded calendar
+    │   ├── Legend.vue        # symptom legend + day counts
+    │   ├── MonthPicker.vue   # ← month year → navigation
+    │   ├── SymptomCard.vue   # colored radio card with emoji
+    │   └── ToastContainer.vue
+    ├── composables/
+    │   ├── useExportPdf.js   # html2canvas + jsPDF (iOS full capture + multi-page)
+    │   └── useToast.js       # global toast state
+    ├── constants/
+    │   └── symptoms.js       # 6 symptoms with code, label, emoji, color, tint, border
+    └── styles/
+        ├── tokens.css
+        ├── typography.css
+        ├── base.css
+        └── components/
+            ├── button.css
+            ├── input.css
+            ├── symptom-card.css
+            ├── calendar.css
+            ├── bottom-nav.css
+            └── toast.css
 ```
 
 ---
@@ -606,7 +627,7 @@ await supabase
 ## 6. Suggested Execution Order (Day-by-Day)
 
 | Day | Tasks |
-|---|---|---|
+|---|---|---|---|
 | 1 | M0 (bootstrap) + M1 (Supabase setup) |
 | 2 | M2 (auth pages + store + guard) |
 | 3 | M2 wrap-up + start M3 (dashboard UI) |
@@ -616,9 +637,16 @@ await supabase
 | 7 | M5 (PDF export) |
 | 8 | M6 (polish + toast + a11y) |
 | 9 | M7 (Profile: profiles table, store, register fields, editable child info) |
-| 10 | M7b (Avatar upload: Storage bucket, upload UI, header display) |
-| 11 | M5 Bug Fix (PDF fit on 1 page) + M8 (Vercel deploy) |
-| 12 | M9 (QA matrix) + bug fixes |
+| 10 | M8 (Bug fixes + PWA) |
+| 11 | M9 (Vercel deploy) |
+| 12 | M10 (QA/UAT) |
+| — | **Post-Launch Sprints** |
+| 13 | M10b (v1.2.0: RUNNY_GREEN, child_gender, greeting, T12:00 fix) |
+| 14 | M11 (v1.3.0: PDF fit-to-page) |
+| 15 | M12 (v1.4.0: Avatar upload) |
+| 16 | M13–M14 (v1.4.1–1.4.2: Avatar bug fixes) |
+| 17 | M15 (v1.4.3: Avatar cache-busting + HEIC) |
+| 18 | M16 (v1.4.4: iOS PWA PDF multi-page slicing) |
 
 ---
 
@@ -654,14 +682,12 @@ await supabase
 
 | เวอร์ชัน | การเปลี่ยนแปลง |
 |----------|----------------|
-| 1.0.0 | เปิดตัว production ครั้งแรก |
-| 1.0.1 | แก้บั๊ก link ยืนยัน email |
-| 1.0.2 | แก้ UI padding, เพิ่ม loading spinner |
-| 1.1.0 | เพิ่ม export CSV, เพิ่มหน้า Settings |
-| 1.2.0 | เพิ่ม symptom RUNNY_GREEN, child_gender, greeting, PWA icon fix, date validation |
-| 1.3.0 | แก้ PDF export ตกหน้า 2 | |
-| 1.4.0 | เพิ่มอัปโหลดรูปโปรไฟล์ | |
-| 1.4.1 | Bug fix: avatar upload crash on compressed Blob (no `.name`) | |
-| 1.4.2 | Bug fix: avatar upload not overwriting (path had extension) | |
-| 1.4.3 | Bug fix: avatar cache ทุกรอบ (cache-busting) + รองรับ HEIC จาก iOS | |
-| 1.4.4 | Bug fix: PDF Export iOS PWA capture ไม่ครบ + multi-page slicing | |
+| 1.0.0 | เปิดตัว production ครั้งแรก (5 symptoms, basic auth dashboard + summary + PDF) |
+| 1.1.0 | — (no minor release recorded) |
+| 1.2.0 | RUNNY_GREEN symptom, child_gender, greeting, PWA icon fix (PNG for iOS), date validation, T12:00 timezone fix |
+| 1.3.0 | PDF Export fit-to-page scaling (content in 1 A4 page) |
+| 1.4.0 | Avatar upload via Supabase Storage, profile card gradient header |
+| 1.4.1 | Bug fix: avatar crash on compressed Blob (`.name` undefined) |
+| 1.4.2 | Bug fix: avatar path without extension for upsert overwrite |
+| 1.4.3 | Bug fix: avatar cache-busting (`?t={timestamp}`) + iOS HEIC→JPEG support |
+| 1.4.4 | Bug fix: iOS PWA html2canvas full capture + multi-page PDF slicing |

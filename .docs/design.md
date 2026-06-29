@@ -485,30 +485,29 @@ src/
         └── toast.css
 ```
 
-หรือถ้าใช้ Tailwind: map token ทั้งหมดเป็น `tailwind.config.js` `theme.extend`
+หรือถ้าใช้ Tailwind v4: map token ผ่าน CSS `@theme` directive ใน `style.css` หรือ `tokens.css`
 
-```js
-// tailwind.config.js
-theme: {
-  extend: {
-    colors: {
-      primary: '#0EA5E9',
-      symptom: {
-        normal:           '#22C55E',
-        runnyClear:       '#3B82F6',
-        fever:            '#F97316',
-        feverRunnyClear:  '#EF4444',
-        feverRunnyGreen:  '#78716C',
-        noData:           '#F1F5F9',
-      }
-    },
-    fontFamily: {
-      sans: ['Sarabun', 'Noto Sans Thai', 'system-ui'],
-    },
-    borderRadius: {
-      'xl': '16px',
-      '2xl': '32px',
-    }
-  }
+```css
+/* style.css หรือ tokens.css */
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0EA5E9;
+  --color-primary-dark: #0284C7;
+  --color-danger: #EF4444;
+  --color-export: #7C3AED;
+  --color-symptom-normal: #22C55E;
+  --color-symptom-runny-clear: #3B82F6;
+  --color-symptom-fever: #F97316;
+  --color-symptom-fever-runny-clear: #EF4444;
+  --color-symptom-runny-green: #84CC16;
+  --color-symptom-fever-runny-green: #78716C;
+  --color-symptom-no-data: #F1F5F9;
+  --font-family-sans: 'Sarabun', 'Noto Sans Thai', system-ui;
+  --radius-xl: 16px;
+  --radius-2xl: 32px;
 }
 ```
+
+> **Tailwind v4:** ใช้ `@import "tailwindcss"` + `@theme` directive แทน `tailwind.config.js` / `postcss.config.js`  
+> ดูเพิ่มเติม: [Tailwind v4 CSS-first configuration](https://tailwindcss.com/blog/tailwindcss-v4#css-first-configuration)
