@@ -33,8 +33,8 @@ flowchart TD
     LoginOK -- ไม่ --> ErrLogin[แสดง Error]
     ErrLogin --> FillLogin
 
-    Dashboard --> SelectDate[เลือกวันที่]
-    SelectDate --> SelectSymptom[เลือกอาการ 1 ใน 5]
+    Dashboard -->     SelectDate[เลือกวันที่]
+    SelectDate --> SelectSymptom[เลือกอาการ 1 ใน 6]
     SelectSymptom --> Save[กดบันทึก]
     Save --> SaveOK{Upsert สำเร็จ?}
     SaveOK -- ใช่ --> SuccessMsg[แสดงข้อความยืนยัน]
@@ -251,7 +251,7 @@ flowchart LR
   - แต่ละช่องวันแสดงเป็น **สีพื้นหลัง** ตาม Color System
   - วันที่ไม่มีข้อมูล = สีเทาอ่อน `#EEEEEE`
   - วันอนาคต = ว่างเปล่า / disabled
-- Legend แสดงความหมายสีทั้ง 5
+- Legend แสดงความหมายสีทั้ง 6
 - นับจำนวนวันแต่ละสถานะด้านล่าง Legend
 - ปุ่ม **"Export PDF"**
 - Link กลับหน้า Dashboard
@@ -317,7 +317,7 @@ flowchart LR
 | `last_name` | `text` | นามสกุล (จากตอนสมัคร) |
 | `child_name` | `text` | ชื่อลูก (แก้ไขที่หน้า Profile) |
 | `child_birthday` | `date` | วันเกิดลูก (แก้ไขที่หน้า Profile, nullable) |
-| `child_gender` | `text` | เพศลูก ('male'/'female', nullable) — ใช้กำหนด icon ที่ header dashboard |
+| `child_gender` | `text` | เพศลูก ('male'/'female', nullable, v1.2.0) — ใช้กำหนด icon ที่ header dashboard |
 | `avatar_url` | `text` | URL รูปโปรไฟล์ใน Supabase Storage (nullable, v1.4.0) |
 | `created_at` | `timestamptz` | เวลาสร้าง |
 | `updated_at` | `timestamptz` | เวลาแก้ไขล่าสุด |
@@ -325,6 +325,7 @@ flowchart LR
 **Constraints:**
 - `PRIMARY KEY (id)` — 1 user มี 1 profile เท่านั้น
 - `FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE`
+- `CHECK (child_gender IS NULL OR child_gender IN ('male', 'female'))`
 
 ### Row Level Security (RLS):
 
@@ -352,29 +353,70 @@ CREATE POLICY "Users can manage own profile"
 npm install jspdf html2canvas
 ```
 
-### Implementation Pattern
+### Implementation Pattern (v1.4.4 — Current)
 
 ```js
 // src/composables/useExportPdf.js
 import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+import { jsPDF } from 'jspdf'
 
 export function useExportPdf() {
-  async function exportCalendar(elementRef, yearMonth) {
-    const canvas = await html2canvas(elementRef.value, { scale: 2 })
-    const imgData = canvas.toDataURL('image/png')
+  async function exportCalendar(element, yearMonth) {
+    // Capture full element — pass scroll dimensions for iOS PWA compatibility
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      height: element.scrollHeight,
+      width: element.scrollWidth,
+      windowHeight: element.scrollHeight,
+      windowWidth: element.scrollWidth,
+    })
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const pageWidth = pdf.internal.pageSize.getWidth()
-    const imgHeight = (canvas.height * pageWidth) / canvas.width
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 10
+    const maxWidth = pageWidth - margin * 2
+    const maxHeight = pageHeight - margin * 2
 
-    pdf.addImage(imgData, 'PNG', 0, 10, pageWidth, imgHeight)
+    const imgWidth = maxWidth
+    const imgHeight = (canvas.height * maxWidth) / canvas.width
+    const xOffset = margin + (maxWidth - imgWidth) / 2
+
+    if (imgHeight <= maxHeight) {
+      // Single page — center vertically
+      const yOffset = margin + (maxHeight - imgHeight) / 2
+      pdf.addImage(canvas, 'PNG', xOffset, yOffset, imgWidth, imgHeight)
+    } else {
+      // Multi-page — slice canvas into A4-sized chunks
+      const pxPerPage = (maxHeight / imgHeight) * canvas.height
+      let srcY = 0
+      let pageNum = 0
+
+      while (srcY < canvas.height) {
+        if (pageNum > 0) pdf.addPage()
+        const slicePx = Math.min(pxPerPage, canvas.height - srcY)
+        const sliceMm = (slicePx / canvas.height) * imgHeight
+        const sliceCanvas = document.createElement('canvas')
+        sliceCanvas.width = canvas.width
+        sliceCanvas.height = slicePx
+        const ctx = sliceCanvas.getContext('2d')
+        ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, canvas.width, slicePx)
+        pdf.addImage(sliceCanvas, 'PNG', xOffset, margin, imgWidth, sliceMm)
+        srcY += slicePx
+        pageNum++
+      }
+    }
+
     pdf.save(`kidhealth-${yearMonth}.pdf`)
   }
 
   return { exportCalendar }
 }
 ```
+
+> **วิวัฒนาการ:** v1.0.0 ใช้ pagination loop → v1.3.0 เปลี่ยนเป็น fit-to-page scaling → v1.4.4 เพิ่ม iOS full capture (`scrollHeight`/`scrollWidth`) + multi-page slicing fallback
 
 ### v1.3.0 Bug Fix: ปรับภาพ PDF ให้พอดีในหน้าเดียว
 
@@ -425,7 +467,9 @@ async function exportCalendar(element, yearMonth) {
 
 **ผลลัพธ์ (iOS PWA):** ยังคงมีปัญหา — ดู v1.4.4 fix ด้านล่าง
 
-### v1.4.4 Bug Fix: iOS PWA html2canvas capture ไม่ครบ + Multi-page support
+### v1.4.4 Bug Fix (Historical): iOS PWA html2canvas capture ไม่ครบ + Multi-page support
+
+> **สถานะ:** Fix นี้ถูกรวมใน `useExportPdf.js` ปัจจุบันแล้ว (ดู Implementation Pattern ด้านบน)
 
 **ปัญหา:** บน iOS Safari/PWA (Add to Home Screen) การ Export PDF ยังคงแสดงเนื้อหาไม่ครบ — แถวท้ายๆ ของ CalendarGrid และ Legend หายไป ลักษณะเหมือน "ตกหน้า 2" ทั้งที่ M11 (v1.3.0) scale content ให้พอดีในหน้าเดียวแล้ว
 
@@ -434,126 +478,14 @@ async function exportCalendar(element, yearMonth) {
 2. **M11 fix scale proportionally** — ใช้ได้เมื่อ canvas มี content ครบถ้วนเท่านั้น ถ้าต้นทางขาด content การ scale ก็แค่ย่อของที่ขาดอยู่แล้ว
 3. **ยังไม่มี multi-page logic** — ถ้า content ยังสูงเกิน 1 หน้า A4 (เช่น 6-week month + Legend ที่มีหลายรายการ) แม้ capture ได้ครบก็จะถูกตัดที่ page boundary
 
-**แนวทางแก้ไข (Change 1 — iOS full capture):**
-
-ส่ง `height`, `width`, `windowHeight`, `windowWidth` options ไปยัง html2canvas เพื่อกำหนด bounding box ให้ตรงกับ element's scroll dimensions แทนที่จะใช้ viewport dimensions:
-
-```js
-const canvas = await html2canvas(element, {
-  scale: 2,
-  backgroundColor: '#ffffff',
-  useCORS: true,
-  height: element.scrollHeight,      // ← ความสูงที่แท้จริงของ element
-  width: element.scrollWidth,         // ← ความกว้างที่แท้จริงของ element
-  windowHeight: element.scrollHeight, // ← บังคับ iOS WebKit ให้ render ทั้ง element
-  windowWidth: element.scrollWidth,   // ← บังคับ iOS WebKit ให้ render ทั้ง element
-})
-```
-
-**แนวทางแก้ไข (Change 2 — Multi-page slicing):**
-
-เมื่อ `imgHeight > maxHeight` (content ยังสูงเกิน 1 หน้า A4) ให้ slice canvas ออกเป็นส่วนๆ ตามความสูง A4 แล้วเพิ่ม page ต่อ:
-
-```js
-if (imgHeight <= maxHeight) {
-  // Single page — center vertically
-  const yOffset = margin + (maxHeight - imgHeight) / 2
-  pdf.addImage(canvas, 'PNG', xOffset, yOffset, imgWidth, imgHeight)
-} else {
-  // Multi-page — slice canvas into A4-sized chunks
-  const pxPerPage = (maxHeight / imgHeight) * canvas.height
-  let srcY = 0
-  let pageNum = 0
-
-  while (srcY < canvas.height) {
-    if (pageNum > 0) pdf.addPage()
-
-    const slicePx = Math.min(pxPerPage, canvas.height - srcY)
-    const sliceMm = (slicePx / canvas.height) * imgHeight
-
-    const sliceCanvas = document.createElement('canvas')
-    sliceCanvas.width = canvas.width
-    sliceCanvas.height = slicePx
-    const ctx = sliceCanvas.getContext('2d')
-    ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, canvas.width, slicePx)
-
-    pdf.addImage(sliceCanvas, 'PNG', xOffset, margin, imgWidth, sliceMm)
-
-    srcY += slicePx
-    pageNum++
-  }
-}
-```
+**แนวทางแก้ไข:**
+1. **iOS full capture:** ส่ง `height`/`width`/`windowHeight`/`windowWidth` = `element.scrollHeight`/`scrollWidth` ไปยัง html2canvas เพื่อกำหนด bounding box ให้ตรงกับ element's scroll dimensions แทน viewport dimensions
+2. **Multi-page slicing:** เมื่อ `imgHeight > maxHeight` → slice canvas ออกเป็นส่วนๆ ตามความสูง A4 แล้วเพิ่ม page ต่อ
 
 **ผลลัพธ์รวม (v1.4.4):**
 - iOS Safari/PWA: html2canvas capture เนื้อหาครบทุกส่วนของ element ไม่ถูกตัด viewport
 - Multi-page: ถ้า content เกิน 1 หน้า A4 → PDF มีหลายหน้าโดยอัตโนมัติ
-- Desktop: ยังทำงานเหมือนเดิม (เปลี่ยนเป็น pass canvas object แทน base64 — performance ดีขึ้นเล็กน้อย, logic เหมือนเดิม)
-- Scaling: คง `scale: 2` เพื่อ quality
-
-**Source Code ปัจจุบัน (v1.4.4):**
-
-```js
-// src/composables/useExportPdf.js
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
-
-export function useExportPdf() {
-  async function exportCalendar(element, yearMonth) {
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      backgroundColor: '#ffffff',
-      useCORS: true,
-      height: element.scrollHeight,
-      width: element.scrollWidth,
-      windowHeight: element.scrollHeight,
-      windowWidth: element.scrollWidth,
-    })
-
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    const margin = 10
-    const maxWidth = pageWidth - margin * 2
-    const maxHeight = pageHeight - margin * 2
-
-    const imgWidth = maxWidth
-    const imgHeight = (canvas.height * maxWidth) / canvas.width
-    const xOffset = margin + (maxWidth - imgWidth) / 2
-
-    if (imgHeight <= maxHeight) {
-      const yOffset = margin + (maxHeight - imgHeight) / 2
-      pdf.addImage(canvas, 'PNG', xOffset, yOffset, imgWidth, imgHeight)
-    } else {
-      const pxPerPage = (maxHeight / imgHeight) * canvas.height
-      let srcY = 0
-      let pageNum = 0
-
-      while (srcY < canvas.height) {
-        if (pageNum > 0) pdf.addPage()
-
-        const slicePx = Math.min(pxPerPage, canvas.height - srcY)
-        const sliceMm = (slicePx / canvas.height) * imgHeight
-
-        const sliceCanvas = document.createElement('canvas')
-        sliceCanvas.width = canvas.width
-        sliceCanvas.height = slicePx
-        const ctx = sliceCanvas.getContext('2d')
-        ctx.drawImage(canvas, 0, srcY, canvas.width, slicePx, 0, 0, canvas.width, slicePx)
-
-        pdf.addImage(sliceCanvas, 'PNG', xOffset, margin, imgWidth, sliceMm)
-
-        srcY += slicePx
-        pageNum++
-      }
-    }
-
-    pdf.save(`kidhealth-${yearMonth}.pdf`)
-  }
-
-  return { exportCalendar }
-}
-```
+- Desktop: ยังทำงานเหมือนเดิม
 
 ---
 
@@ -688,27 +620,26 @@ prod project → kidhealth-prod.supabase.co  (ข้อมูลจริง)
 
 ```
 project-root/
-├── .env                  # ค่า default (ไม่ควร commit ถ้ามี secret)
 ├── .env.development      # ใช้ตอน npm run dev
-├── .env.production       # ใช้ตอน npm run build (Vercel ใช้อันนี้)
+├── .env.production       # ใช้ตอน npm run build (Vercel ใช้อันนี้) — gitignored
 └── .env.local            # override ส่วนตัว ไม่ commit (gitignore)
 ```
 
-**.env.development**
+**.env.development** (ค่าจริงจาก Supabase Dashboard)
 ```env
-VITE_SUPABASE_URL=https://kidhealth-dev.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJdev...
+VITE_SUPABASE_URL=https://qkgpacyhjuexhbcsyyxo.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_4ieVsF10rUhanyucfuZeyw_IhXprMFL
 VITE_APP_ENV=development
 ```
 
-**.env.production**
+**.env.production** (เก็บ local — ไม่ commit)
 ```env
-VITE_SUPABASE_URL=https://kidhealth-prod.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJprod...
+VITE_SUPABASE_URL=https://njadmgqzywqqqbrmxssl.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_WoNoXohgC67-pFY2NXAT6A_0Lon-K4a
 VITE_APP_ENV=production
 ```
 
-> ⚠️ **ห้าม commit `.env.production`** → ใส่ค่าจริงใน Vercel Dashboard แทน
+> ⚠️ **ห้าม commit `.env.production` ขึ้น Git** — `.gitignore` มีไว้แล้ว ใส่ค่าจริงใน Vercel Dashboard สำหรับ Production/Preview deploy
 
 ---
 
@@ -718,12 +649,15 @@ VITE_APP_ENV=production
 
 | Variable | Environment | Value |
 |---|---|---|
-| `VITE_SUPABASE_URL` | Production | `https://kidhealth-prod.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Production | `eyJprod...` |
-| `VITE_SUPABASE_URL` | Preview | `https://kidhealth-dev.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Preview | `eyJdev...` |
-| `VITE_SUPABASE_URL` | Development | `https://kidhealth-dev.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Development | `eyJdev...` |
+| `VITE_SUPABASE_URL` | Production | `https://njadmgqzywqqqbrmxssl.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Production | `sb_publishable_WoNoXohgC67-pFY2NXAT6A_0Lon-K4a` |
+| `VITE_SUPABASE_URL` | Preview | `https://qkgpacyhjuexhbcsyyxo.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Preview | `sb_publishable_4ieVsF10rUhanyucfuZeyw_IhXprMFL` |
+| `VITE_SUPABASE_URL` | Development | `https://qkgpacyhjuexhbcsyyxo.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Development | `sb_publishable_4ieVsF10rUhanyucfuZeyw_IhXprMFL` |
+| `VITE_APP_ENV` | Production | `production` |
+| `VITE_APP_ENV` | Preview | `development` |
+| `VITE_APP_ENV` | Development | `development` |
 
 > Vercel มี 3 environment: **Production** (main branch), **Preview** (PR branch), **Development** (local pull via `vercel env pull`)
 
@@ -742,10 +676,10 @@ VITE_APP_ENV=production
 
 | สถานการณ์ | ไฟล์ที่ Vite ใช้ | ชี้ไป Supabase |
 |---|---|---|
-| `npm run dev` | `.env.development` | dev project |
-| `npm run build` (local) | `.env.production` | prod project |
-| Vercel deploy (main) | Vercel Env: Production | prod project |
-| Vercel deploy (PR) | Vercel Env: Preview | dev project |
+| `npm run dev` | `.env.development` | dev (`kidhealth-dev`) |
+| `npm run build` (local) | `.env.production` | prod (`kidhealth-prod`) |
+| Vercel deploy (main) | Vercel Env: Production | prod (`kidhealth-prod`) |
+| Vercel deploy (PR) | Vercel Env: Preview | dev (`kidhealth-dev`) |
 | `vercel env pull` | `.env.local` (auto-generated) | ตาม Vercel setting |
 
 ---
@@ -769,42 +703,50 @@ VITE_APP_ENV=production
 
 ```
 public/
-├── favicon.svg                # favicon
+├── favicon-v2.svg             # favicon (purple heart)
+├── favicon.svg                # original favicon
 ├── icons.svg                  # social icon sprite
-└── pwa-icon.svg               # PWA home screen icon (512×512 SVG)
+├── pwa-icon-v2.svg            # PWA home screen icon (512×512 SVG)
+├── pwa-icon.svg               # original PWA icon
+├── pwa-icon-152.png           # iOS iPad Retina A2HS icon
+├── pwa-icon-180.png           # iOS iPhone Retina A2HS icon
+├── pwa-icon-192.png           # PWA icon (192×192 PNG fallback)
+└── pwa-icon-512.png           # PWA icon (512×512 PNG fallback)
 src/
 ├── assets/
+│   ├── hero.png
+│   └── vite.svg
 ├── components/
 │   ├── BottomNav.vue          # Bottom navigation (Dashboard / Summary / Profile)
 │   ├── CalendarGrid.vue       # ปฏิทิน summary (ref สำหรับ export)
 │   ├── Legend.vue             # Legend + นับจำนวนวัน
 │   ├── MonthPicker.vue        # ตัวเลื่อนเดือน
-│   ├── SymptomCard.vue        # ปุ่มเลือกอาการ (รับ color + label)
+│   ├── SymptomCard.vue        # ปุ่มเลือกอาการ (รับ color + label + emoji)
 │   └── ToastContainer.vue     # Toast แจ้งเตือน
 ├── composables/
-│   ├── useExportPdf.js        # html2canvas + jsPDF
+│   ├── useExportPdf.js        # html2canvas + jsPDF (iOS PWA full capture + multi-page)
 │   └── useToast.js            # Global toast state
 ├── constants/
-│   └── symptoms.js            # Color map + label
+│   └── symptoms.js            # 6 symptoms: code, label, emoji, color, tint, border, cssClass
 ├── lib/
 │   └── supabase.js            # Supabase client
 ├── pages/
 │   ├── LoginPage.vue
-│   ├── RegisterPage.vue
+│   ├── RegisterPage.vue       # includes first_name + last_name fields
 │   ├── VerifyEmailPage.vue    # หน้ารอ confirm email
-│   ├── DashboardPage.vue
-│   ├── SummaryPage.vue
-│   └── ProfilePage.vue        # โปรไฟล์ + แก้ไขชื่อ/วันเกิดลูก
+│   ├── DashboardPage.vue      # date picker + symptom cards + avatar header
+│   ├── SummaryPage.vue        # month picker + calendar + legend + export PDF
+│   └── ProfilePage.vue        # profile card, avatar upload, child info, gender, age calc
 ├── router/
-│   └── index.js               # Vue Router + auth guard
+│   └── index.js               # Vue Router + auth guard beforeEach
 ├── stores/
-│   ├── auth.js                # Pinia: session, user, loading
-│   ├── logs.js                # Pinia: daily logs CRUD
-│   └── profile.js             # Pinia: profile (child_name, child_birthday)
+│   ├── auth.js                # Pinia: session, user, loading, init/signIn/signUp/signOut
+│   ├── logs.js                # Pinia: daily logs CRUD (fetchForDate, fetchMonth, upsertLog)
+│   └── profile.js             # Pinia: profile (fetch, update, uploadAvatar)
 ├── styles/
-│   ├── tokens.css             # Design tokens (colors, spacing, shadows)
-│   ├── typography.css         # Font sizes, weights, heading classes
-│   ├── base.css               # Reset, body, scroll, focus styles
+│   ├── tokens.css             # Design tokens (colors, spacing, shadows, radius)
+│   ├── typography.css         # Font sizes, weights, heading classes (Sarabun)
+│   ├── base.css               # Reset, body, scroll, focus styles, Tailwind directives
 │   └── components/            # Component-level CSS
 │       ├── button.css
 │       ├── input.css
@@ -812,25 +754,25 @@ src/
 │       ├── calendar.css
 │       ├── bottom-nav.css
 │       └── toast.css
-├── App.vue
-├── main.js
-└── style.css                  # @import entry for all CSS
+├── App.vue                    # Loading splash + router-view + BottomNav + ToastContainer
+├── main.js                    # Bootstrap: Pinia → auth.init() → router → mount
+└── style.css                  # @import entry for all CSS (tokens → typography → base → components → tailwindcss)
 ```
 
 ---
 
 ## 12. Routes & Auth Guard
 
-| Path | Component | Auth Required | Notes |
-|---|---|---|---|
-| `/login` | LoginPage | ❌ | |
-| `/register` | RegisterPage | ❌ | |
-| `/verify` | VerifyEmailPage | ❌ | หลังสมัคร, แสดง "กรุณาตรวจสอบอีเมล" |
-| `/` | — | — | redirect → `/login` |
-| `/dashboard` | DashboardPage | ✅ | |
-| `/summary` | SummaryPage | ✅ | |
-| `/profile` | ProfilePage | ✅ | |
-| `/:pathMatch(.*)*` | — | — | catch-all redirect → `/login` |
+| Path | Name | Component | Auth Required | Notes |
+|---|---|---|---|---|---|
+| `/login` | `Login` | LoginPage | ❌ | |
+| `/register` | `Register` | RegisterPage | ❌ | |
+| `/verify` | `VerifyEmail` | VerifyEmailPage | ❌ | หลังสมัคร, แสดง "กรุณาตรวจสอบอีเมล" |
+| `/` | — | — | — | redirect → `/login` |
+| `/dashboard` | `Dashboard` | DashboardPage | ✅ | |
+| `/summary` | `Summary` | SummaryPage | ✅ | |
+| `/profile` | `Profile` | ProfilePage | ✅ | |
+| `/:pathMatch(.*)*` | — | — | — | catch-all redirect → `/login` |
 
 ### Auth Guard Logic (`router.beforeEach`)
 
@@ -880,24 +822,27 @@ export const SYMPTOMS = [
 ### คุณสมบัติ
 
 | Feature | รายละเอียด |
-|---|---|
+|---|---|---|
 | Manifest | name: `KidHealth Tracker`, short_name: `KidHealth`, display: `standalone` |
 | Start URL | `/dashboard` (หลังจาก login) |
 | Theme Color | `#F8FAFC` |
-| Icon | SVG 512×512 + PNG 192×192 + PNG 512×512 (purple heart on white bg) |
-| Service Worker | auto-generated by `vite-plugin-pwa` |
+| Icons | SVG 512×512 + PNG 192×192 + PNG 512×512 + PNG 180×180 (iOS) + PNG 152×152 (iPad) |
+| Service Worker | auto-generated by `vite-plugin-pwa` (Workbox) |
 | Caching | App shell (JS, CSS, HTML) + Google Fonts (CacheFirst) |
-| iOS Meta | `apple-mobile-web-app-capable`, `apple-touch-icon` |
+| iOS Meta | `apple-mobile-web-app-capable`, `apple-touch-icon` (180×180 + 152×152 PNG) |
+| iOS A2HS | ใช้ `<link rel="apple-touch-icon" sizes="180x180">` PNG แทน SVG (iOS ไม่รองรับ SVG สำหรับ Home Screen icon) |
 
 ### ไฟล์ที่เกี่ยวข้อง
 
 | File | Role |
-|---|---|
-| `public/pwa-icon-v2.svg` | 512×512 SVG icon สำหรับ manifest |
+|---|---|---|
+| `public/pwa-icon-v2.svg` | 512×512 SVG icon สำหรับ manifest (purpose: any maskable) |
 | `public/pwa-icon-192.png` | 192×192 PNG icon (fallback สำหรับ Android) |
-| `public/pwa-icon-512.png` | 512×512 PNG icon (fallback สำหรับ Android) |
-| `vite.config.js` | `VitePWA` plugin config (manifest + Workbox) |
-| `index.html` | `<link rel="manifest">`, `<meta>` tags for iOS/Android |
+| `public/pwa-icon-512.png` | 512×512 PNG icon (purpose: any maskable) |
+| `public/pwa-icon-180.png` | 180×180 PNG icon สำหรับ iOS iPhone Retina A2HS |
+| `public/pwa-icon-152.png` | 152×152 PNG icon สำหรับ iOS iPad Retina A2HS |
+| `vite.config.js` | `VitePWA` plugin config (manifest + Workbox + runtimeCaching) |
+| `index.html` | `<link rel="manifest">`, `<meta>` tags for iOS/Android, apple-touch-icon PNG |
 
 > Browser จะแสดง banner "Add to Home Screen" เมื่อตรงเงื่อนไข: HTTPS, manifest.json valid, service worker registered, มี icon 192px+
 
