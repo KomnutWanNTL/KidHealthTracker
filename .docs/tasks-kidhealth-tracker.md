@@ -419,7 +419,7 @@ icons: [
 
 ---
 
-## 🎯 Milestone 12 — Avatar Upload (v1.4.0) 🚧
+## 🎯 Milestone 12 — Avatar Upload (v1.4.0) ✅
 
 **Est:** 1 day
 
@@ -479,6 +479,19 @@ icons: [
 
 ---
 
+## 🎯 Milestone 13 — Bug Fix: Avatar Upload Crash on Large Images (v1.4.1) ✅
+
+**Est:** 0.1 day
+
+### Tasks
+
+- [x] **M13.1** วิเคราะห์สาเหตุ: `compressImage()` คืนค่า `Blob` (ไม่มี `.name`) → `file.name.split('.')` ใน `stores/profile.js` crash
+- [x] **M13.2** แก้ `stores/profile.js` line 62: `file.name ? file.name.split('.').pop() : 'jpg'`
+- [x] **M13.3** ทดสอบ: รูป <700KB → `File.name` มีค่า → ใช้ `.name.split` ปกติ; รูป >700KB → `file.name` เป็น undefined → fallback `'jpg'`
+- [x] **M13.4** Bump version 1.4.1, อัปเดต docs
+
+---
+
 ## 📝 Notes
 
 - **`VITE_SUPABASE_ANON_KEY`** ใน `.env.development` และ `.env.production` ต้องใส่ค่าจริงจาก Supabase Dashboard ก่อนรัน
@@ -499,3 +512,7 @@ icons: [
   - Column `avatar_url` ใน `profiles` table ต้องมีก่อน deploy
   - RLS policies สำหรับ Storage ต้อง set ให้ถูกต้อง
   - Public bucket = avatar images readable without auth token (RLS only controls write)
+- **M13 (Avatar Upload Bug Fix v1.4.1):**
+  - **🐛 Bug:** เมื่ออัปโหลดรูป >700KB `compressImage()` คืนค่า `Blob` ซึ่งไม่มี `.name` → `file.name.split('.')` crash ด้วย `"undefined is not object (evaluating 'n.name.split')"`
+  - **🔧 Fix:** เพิ่ม null-safe check `file.name ? file.name.split('.').pop() : 'jpg'` ใน `stores/profile.js:62`
+  - เนื่องจาก `compressImage()` output เป็น JPEG เสมอ (`canvas.toBlob` ใช้ `'image/jpeg'`) จึง safe ที่จะ fallback เป็น `'jpg'`
