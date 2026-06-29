@@ -401,21 +401,21 @@ icons: [
 
 ---
 
-## 🎯 Milestone 11 — Bug Fix: PDF Export อยู่หน้าเดียว (v1.3.0)
+## 🎯 Milestone 11 — Bug Fix: PDF Export อยู่หน้าเดียว (v1.3.0) ✅
 
 **Est:** 0.25 day
 
 ### Tasks
 
-- [ ] **M11.1** วิเคราะห์สาเหตุ: `useExportPdf.js` ใช้ `scale: 2` + portrait A4 → เนื้อหา CalendarGrid + Legend สูงเกิน 277 มม. → ตกหน้า 2
-- [ ] **M11.2** แก้ `useExportPdf.js`:
+- [x] **M11.1** วิเคราะห์สาเหตุ: `useExportPdf.js` ใช้ `scale: 2` + portrait A4 → เนื้อหา CalendarGrid + Legend สูงเกิน 277 มม. → ตกหน้า 2
+- [x] **M11.2** แก้ `useExportPdf.js`:
   - เพิ่ม `fit` scaling: ถ้า `imgHeight > maxHeight` → ปรับ proportionally ให้พอดีในหน้าเดียว
   - ยกเลิก `while` loop pagination (ไม่ต้องแบ่งหลายหน้า)
   - จัดกึ่งกลางภาพในแนวนอน (`xOffset`)
   - คง `scale: 2` ไว้เพื่อ quality แต่ภาพจะถูกลด proportionally หลัง capture
-- [ ] **M11.3** ทดสอบกับเดือนที่มีครบ 7 วัน × 5–6 สัปดาห์ + Legend 7 รายการ → ต้องอยู่ในหน้า A4 portrait หน้าเดียว
-- [ ] **M11.4** ทดสอบกับเดือนที่มี 4 สัปดาห์ (กุมภาพันธ์) → ใช้พื้นที่เต็มหน้า ยังดูดี
-- [ ] **M11.5** ทดสอบ Chrome + Safari
+- [x] **M11.3** ทดสอบกับเดือนที่มีครบ 7 วัน × 5–6 สัปดาห์ + Legend 7 รายการ → ต้องอยู่ในหน้า A4 portrait หน้าเดียว
+- [x] **M11.4** ทดสอบกับเดือนที่มี 4 สัปดาห์ (กุมภาพันธ์) → ใช้พื้นที่เต็มหน้า ยังดูดี
+- [x] **M11.5** ทดสอบ Chrome + Safari
 
 ---
 

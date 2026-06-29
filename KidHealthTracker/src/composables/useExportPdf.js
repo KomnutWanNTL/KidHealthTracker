@@ -14,23 +14,20 @@ export function useExportPdf() {
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
     const margin = 10
-    const usableWidth = pageWidth - margin * 2
-    const imgHeight = (canvas.height * usableWidth) / canvas.width
+    const maxWidth = pageWidth - margin * 2
+    const maxHeight = pageHeight - margin * 2
 
-    if (imgHeight <= pageHeight - margin * 2) {
-      pdf.addImage(imgData, 'PNG', margin, margin, usableWidth, imgHeight)
-    } else {
-      let position = margin
-      let heightLeft = imgHeight
-      pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imgHeight)
-      heightLeft -= pageHeight - margin * 2
-      while (heightLeft > 0) {
-        position = margin - (imgHeight - heightLeft)
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imgHeight)
-        heightLeft -= pageHeight - margin * 2
-      }
+    let imgWidth = maxWidth
+    let imgHeight = (canvas.height * maxWidth) / canvas.width
+
+    if (imgHeight > maxHeight) {
+      const ratio = maxHeight / imgHeight
+      imgHeight = maxHeight
+      imgWidth = maxWidth * ratio
     }
+
+    const xOffset = margin + (maxWidth - imgWidth) / 2
+    pdf.addImage(imgData, 'PNG', xOffset, margin, imgWidth, imgHeight)
 
     pdf.save(`kidhealth-${yearMonth}.pdf`)
   }
