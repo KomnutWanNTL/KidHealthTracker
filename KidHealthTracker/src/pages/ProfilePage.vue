@@ -450,6 +450,7 @@ async function handleFileChange(event) {
   gap: var(--space-3);
   padding: 14px 0;
   border-bottom: 1px solid var(--color-border-subtle);
+  overflow: hidden;
 }
 
 .child-info-row--last {
@@ -488,6 +489,7 @@ async function handleFileChange(event) {
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
+  min-width: 0;
 }
 
 .child-info-row__age {
