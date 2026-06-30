@@ -1,12 +1,16 @@
 <script setup>
 import { useAuthStore } from '@/stores/auth'
+import { useDarkMode } from '@/composables/useDarkMode'
 import ToastContainer from '@/components/ToastContainer.vue'
 import BottomNav from '@/components/BottomNav.vue'
 import { useRoute } from 'vue-router'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 
 const auth = useAuthStore()
 const route = useRoute()
+
+const { init: initDarkMode } = useDarkMode()
+onMounted(initDarkMode)
 
 const showBottomNav = computed(() =>
   (auth.session || auth.isGuest) && ['Dashboard', 'Summary', 'Profile'].includes(route.name),

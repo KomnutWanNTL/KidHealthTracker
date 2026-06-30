@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useLogsStore } from '@/stores/logs'
 import { useProfileStore } from '@/stores/profile'
 import { useToast } from '@/composables/useToast'
+import { useDarkMode } from '@/composables/useDarkMode'
 import { version } from '../../package.json'
 import heic2any from 'heic2any'
 import GuestBanner from '@/components/GuestBanner.vue'
@@ -14,6 +15,7 @@ const logs = useLogsStore()
 const profileStore = useProfileStore()
 const router = useRouter()
 const { success, error: showError } = useToast()
+const { isDark, toggle } = useDarkMode()
 
 const loggingOut = ref(false)
 const saving = ref(false)
@@ -290,6 +292,20 @@ async function handleFileChange(event) {
         </div>
       </section>
 
+      <div class="dark-mode-toggle">
+        <span class="dark-mode-toggle__label">🌙 โหมดมืด</span>
+        <button
+          type="button"
+          role="switch"
+          :aria-checked="isDark"
+          class="toggle-switch"
+          :class="{ 'toggle-switch--on': isDark }"
+          @click="toggle"
+        >
+          <span class="toggle-switch__thumb"></span>
+        </button>
+      </div>
+
       <button
         type="button"
         @click="handleSave"
@@ -477,7 +493,7 @@ async function handleFileChange(event) {
 .child-info-row__age {
   font-size: 11px;
   font-weight: 600;
-  color: #0EA5E9;
+  color: var(--color-primary);
   white-space: nowrap;
 }
 
@@ -500,10 +516,21 @@ async function handleFileChange(event) {
   line-height: 1.3;
 }
 
+.dark .gender-pill {
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
 .gender-pill--active {
   background: #EFF6FF;
   border-color: #93C5FD;
   color: #0284C7;
+}
+
+.dark .gender-pill--active {
+  background: #0C1F3F;
+  border-color: #3B82F6;
+  color: #93C5FD;
 }
 
 .stats-section {
@@ -525,8 +552,16 @@ async function handleFileChange(event) {
   background: #F0FDF4;
 }
 
+.dark .stats-card--green {
+  background: #052E16;
+}
+
 .stats-card--blue {
   background: #EFF6FF;
+}
+
+.dark .stats-card--blue {
+  background: #0C1F3F;
 }
 
 .stats-card__label {
@@ -539,8 +574,16 @@ async function handleFileChange(event) {
   color: #15803D;
 }
 
+.dark .stats-card--green .stats-card__label {
+  color: #4ADE80;
+}
+
 .stats-card--blue .stats-card__label {
   color: #0369A1;
+}
+
+.dark .stats-card--blue .stats-card__label {
+  color: #60A5FA;
 }
 
 .stats-card__value {
@@ -553,8 +596,16 @@ async function handleFileChange(event) {
   color: #15803D;
 }
 
+.dark .stats-card--green .stats-card__value {
+  color: #4ADE80;
+}
+
 .stats-card--blue .stats-card__value {
   color: #0369A1;
+}
+
+.dark .stats-card--blue .stats-card__value {
+  color: #60A5FA;
 }
 
 .stats-card__unit {
@@ -612,5 +663,54 @@ hr {
   color: var(--color-text-muted);
   margin-top: var(--space-6);
   margin-bottom: var(--space-2);
+}
+
+.dark-mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  margin: var(--space-3) 0;
+  border-top: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.dark-mode-toggle__label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--color-border);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--motion-mid) ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.toggle-switch--on {
+  background: var(--color-primary);
+}
+
+.toggle-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: var(--shadow-subtle);
+  transition: transform var(--motion-mid) ease;
+}
+
+.toggle-switch--on .toggle-switch__thumb {
+  transform: translateX(22px);
 }
 </style>

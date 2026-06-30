@@ -1,3 +1,28 @@
+html.dark {
+  --color-bg: #0F172A;
+  --color-surface: #1E293B;
+  --color-border: #334155;
+  --color-border-subtle: #1E293B;
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #CBD5E1;
+  --color-text-muted: #64748B;
+  --color-primary: #38BDF8;
+  --color-primary-dark: #7DD3FC;
+
+  --shadow-subtle: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+
+  --symptom-no-data: #334155;
+
+  --symptom-normal-tint: #052E16;
+  --symptom-runny-clear-tint: #0C1F3F;
+  --symptom-fever-tint: #2D1404;
+  --symptom-fever-runny-clear-tint: #2D0A0A;
+  --symptom-runny-green-tint: #0A1A0A;
+  --symptom-fever-runny-green-tint: #1C1917;
+}
+
 :root {
   --color-bg: #F8FAFC;
   --color-surface: #FFFFFF;

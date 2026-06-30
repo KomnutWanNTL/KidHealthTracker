@@ -7,4 +7,6 @@
 @import "./styles/components/calendar.css";
 @import "./styles/components/bottom-nav.css";
 @import "./styles/components/toast.css";
+@custom-variant dark (&:where(.dark, .dark *));
+
 @import "tailwindcss";

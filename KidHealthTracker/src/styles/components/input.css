@@ -21,6 +21,10 @@
   background: #ffffff;
 }
 
+.dark .input:focus {
+  background: var(--color-surface);
+}
+
 .input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -32,6 +36,10 @@
 
 .input--on-surface {
   background: #ffffff;
+}
+
+.dark .input--on-surface {
+  background: var(--color-surface);
 }
 
 .input--date {

@@ -45,6 +45,14 @@
   background: var(--color-bg);
 }
 
+.dark .btn--secondary {
+  background: var(--color-surface);
+}
+
+.dark .btn--secondary:hover {
+  background: var(--color-border);
+}
+
 .btn--danger {
   background: var(--color-danger);
   color: #ffffff;
@@ -74,6 +82,16 @@
 .btn--danger-outlined:hover {
   background: #FEF2F2;
   color: #DC2626;
+}
+
+.dark .btn--danger-outlined {
+  background: var(--color-surface);
+  border-color: #EF4444;
+}
+
+.dark .btn--danger-outlined:hover {
+  background: #2D0A0A;
+  color: #FCA5A5;
 }
 
 .btn--ghost {
