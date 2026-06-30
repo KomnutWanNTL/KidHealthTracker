@@ -544,3 +544,127 @@ src/
 
 > **Tailwind v4:** ใช้ `@import "tailwindcss"` + `@theme` directive แทน `tailwind.config.js` / `postcss.config.js`  
 > ดูเพิ่มเติม: [Tailwind v4 CSS-first configuration](https://tailwindcss.com/blog/tailwindcss-v4#css-first-configuration)
+
+---
+
+## 13. Dark Mode
+
+**เวอร์ชัน:** v4.0.0
+
+### 13.1 Approach
+
+ใช้ **Tailwind CSS class-based dark mode** (`class` strategy) — ใส่ `.dark` class บน `<html>` element เพื่อ trigger `dark:` utility variants
+
+```css
+/* Tailwind v4: เปิด class-based dark mode */
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+```
+
+```
+┌──────────────────────────────────────┐
+│ Preferences                          │
+│ 1. localStorage (manual toggle)      │
+│ 2. System prefers-color-scheme       │
+│    (fallback เมื่อไม่มี stored value) │
+└──────────────────────────────────────┘
+```
+
+**Key rules:**
+- **Symptom colors ห้ามเปลี่ยน** — สีอาการเป็น identity ของแอพ (ใช้识别)
+- **Primary color สว่างขึ้น** ใน dark mode (`#0EA5E9 → #38BDF8`) เพื่อ contrast บนพื้นหลัง dark
+- **Shadow opacity ลดลง** — shadow จะดูไม่เป็นธรรมชาติใน dark mode
+- **Calendar no-data cell** เปลี่ยนจาก `#F1F5F9` → `#334155`
+- **Toast** กลับสี: bg dark → bg light, text light → text dark
+
+---
+
+### 13.2 Color Tokens — Dark Mode Overrides
+
+| Token | Light | Dark | ตัวอย่าง |
+|-------|-------|------|----------|
+| `--color-bg` | `#F8FAFC` | `#0F172A` | `bg-slate-50` → `dark:bg-slate-900` |
+| `--color-surface` | `#FFFFFF` | `#1E293B` | `bg-white` → `dark:bg-slate-800` |
+| `--color-surface-elevated` | `#FFFFFF` | `#334155` | `bg-white shadow-lg` → `dark:bg-slate-700` |
+| `--color-border` | `#E2E8F0` | `#334155` | `border-slate-200` → `dark:border-slate-700` |
+| `--color-border-subtle` | `#F1F5F9` | `#1E293B` | `border-slate-100` → `dark:border-slate-800` |
+| `--color-text-primary` | `#0F172A` | `#F1F5F9` | `text-slate-900` → `dark:text-slate-100` |
+| `--color-text-secondary` | `#475569` | `#CBD5E1` | `text-slate-600` → `dark:text-slate-300` |
+| `--color-text-muted` | `#94A3B8` | `#64748B` | `text-slate-400` → `dark:text-slate-500` |
+| `--color-primary` | `#0EA5E9` | `#38BDF8` | `text-sky-500` → `dark:text-sky-400` |
+| `--color-primary-dark` | `#0284C7` | `#7DD3FC` | `hover:bg-sky-600` → `dark:hover:bg-sky-300` |
+| `--color-danger` | `#EF4444` | `#F87171` | `text-red-500` → `dark:text-red-400` |
+
+---
+
+### 13.3 Component Adaptations
+
+| Component | Light | Dark | หมายเหตุ |
+|-----------|-------|------|----------|
+| **Login/Register page bg** | `bg-slate-50` | `dark:bg-slate-900` | |
+| **Card** | `bg-white shadow-subtle` | `dark:bg-slate-800 dark:shadow-none` | shadow ไม่จำเป็น |
+| **Input** | `bg-slate-50 border-slate-200` | `dark:bg-slate-800 dark:border-slate-600` | |
+| **Input focus** | `border-sky-500 ring-sky-500` | `dark:border-sky-400 dark:ring-sky-400` | |
+| **Primary button** | `bg-sky-500 text-white` | `dark:bg-sky-400 dark:text-slate-900` | |
+| **Danger outlined** | `bg-white border-red-300 text-red-500` | `dark:bg-slate-800 dark:border-red-400 dark:text-red-400` | |
+| **Bottom nav** | `bg-white border-t-slate-200` | `dark:bg-slate-800 dark:border-t-slate-700` | |
+| **Toast** | `bg-slate-900 text-white` | `dark:bg-white dark:text-slate-900` | inverted |
+| **Calendar header** | `text-slate-400` | `dark:text-slate-500` | อา (Sun) = `text-red-500` → `dark:text-red-400` |
+| **Calendar cell (no data)** | `bg-[#F1F5F9]` | `dark:bg-[#334155]` | |
+| **Calendar today outline** | `ring-2 ring-sky-500` | `dark:ring-sky-400` | |
+| **Symptom Card (unselected)** | `bg-{tint} border-{border}` | tint คงเดิม, border เดิม | พื้นหลัง tint บน dark surface อาจปรับ opacity |
+| **Guest Banner** | `bg-amber-50 border-amber-200 text-amber-800` | `dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200` | |
+| **MonthPicker arrow** | `text-slate-600` | `dark:text-slate-300` | disabled arrow: opacity 0.3 |
+| **Legend count** | `text-slate-600` | `dark:text-slate-300` | |
+| **Stats card (ซ้าย)** | `bg-[#F0FDF4] text-[#15803D]` | `dark:bg-green-900/30 dark:text-green-300` | |
+| **Stats card (ขวา)** | `bg-[#EFF6FF] text-[#0369A1]` | `dark:bg-sky-900/30 dark:text-sky-300` | |
+| **Upgrade card (Guest)** | `bg-amber-50` | `dark:bg-amber-900/20` | |
+
+---
+
+### 13.4 Toggle UI
+
+**ตำแหน่ง:** Profile Page (ใต้ stats section)
+
+```
+🌙 โหมดมืด                    [⬤——○]
+```
+
+- ใช้ `role="switch"` + `aria-checked` ตาม accessibility
+- รูปแบบ: custom toggle switch (CSS only)
+- state synced กับ composable `useDarkMode()`
+
+**Icon button ใน page header (optional):**
+```
+[ ☀️ / 🌙 ]  ถัดจาก avatar
+```
+
+---
+
+### 13.5 Export PDF Compatibility
+
+เมื่อ export PDF ต้องบังคับ light mode ชั่วคราวเพื่อให้ PDF อ่านง่าย:
+
+```js
+const html = document.documentElement
+const wasDark = html.classList.contains('dark')
+if (wasDark) html.classList.remove('dark')
+// capture → html2canvas
+if (wasDark) html.classList.add('dark')
+```
+
+---
+
+### 13.6 Implementation Files
+
+| File | Change |
+|------|--------|
+| `src/composables/useDarkMode.js` | **New** — dark mode composable (class + localStorage + system pref) |
+| `src/style.css` | `@custom-variant dark` directive |
+| `src/styles/tokens.css` | Dark mode CSS custom properties |
+| `src/composables/useExportPdf.js` | เพิ่ม dark→light override |
+| `src/pages/ProfilePage.vue` | Dark mode toggle switch |
+| `src/pages/*.vue` | `dark:` utility classes ใน templates |
+| `src/components/*.vue` | `dark:` utility classes ใน templates |
+| `src/styles/components/*.css` | Dark mode variants ถ้ามี hardcoded colors |
+| `index.html` | `<meta name="color-scheme" content="light dark">` |

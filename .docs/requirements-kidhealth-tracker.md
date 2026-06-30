@@ -229,6 +229,36 @@ flowchart LR
     C --> D[html2canvas → canvas]
     D --> E[jsPDF → แปลงเป็น PDF]
     E --> F[Download: kidhealth-YYYY-MM.pdf]
+
+---
+
+### 2.6 Forgot Password Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Vue as Vue App
+    participant Supabase as Supabase Auth
+    participant Email as Email Provider
+
+    User->>Vue: คลิก "ลืมรหัสผ่าน" ที่หน้า Login
+    Vue->>Vue: เปิดหน้า /forgot-password
+
+    User->>Vue: กรอก Email
+    Vue->>Supabase: resetPasswordForEmail(email, { redirectTo })
+    Supabase-->>Email: ส่ง password reset email
+    Supabase-->>Vue: success
+    Vue-->>User: แสดง "กรุณาตรวจสอบอีเมล"
+
+    User->>Email: เปิด link reset password
+    Email-->>Vue: redirect /reset-password#access_token=...
+    Note over Vue,Supabase: onAuthStateChange → PASSWORD_RECOVERY
+
+    User->>Vue: กรอกรหัสผ่านใหม่ + ยืนยัน
+    Vue->>Supabase: updateUser({ password })
+    Supabase-->>Vue: success
+    Vue-->>User: toast "ตั้งรหัสผ่านใหม่สำเร็จ ✓"
+    Vue-->>User: redirect /login
 ```
 
 ---
@@ -281,6 +311,7 @@ flowchart LR
 - Logo / ชื่อแอพ
 - Input: Email
 - Input: Password (masked)
+- Link "ลืมรหัสผ่าน?" ใต้ input Password — ไป `/forgot-password`
 - ปุ่ม "เข้าสู่ระบบ"
 - ปุ่ม "ทดลองใช้งาน" (Guest Mode) — ใช้ได้ทันทีไม่ต้องสมัคร
 - Link ไป `/register`
@@ -393,6 +424,47 @@ flowchart LR
 **Avatar Upload (v1.4.3) — Bug Fixes:**
 - **Cache-busting:** ต่อท้าย `?t={timestamp}` กับ public URL ทุกครั้งที่ upload เพื่อบังคับ browser reload รูปใหม่ ไม่ค้างรูปเก่า
 - **iOS HEIC Support:** เพิ่ม `image/heic,image/heif` ใน file picker `accept` + แปลง HEIC→JPEG ด้วย `heic2any` library ก่อน upload
+
+---
+
+### 4.6 หน้า Request Reset Password
+
+**Path:** `/forgot-password`
+
+**Elements:**
+- Logo / ชื่อแอพ (เหมือนหน้า Login)
+- คำอธิบายสั้น: "ป้อนอีเมลที่ใช้สมัครสมาชิก เราจะส่งลิงก์ตั้งรหัสผ่านใหม่ให้คุณ"
+- Input: Email (`type="email"`, `autocomplete="email"`)
+- ปุ่ม "ส่งลิงก์ตั้งรหัสผ่านใหม่"
+- Link "กลับไปหน้า Login"
+- Success state: แทนที่ form ด้วยข้อความ "📧 กรุณาตรวจสอบอีเมลของท่าน"
+- Error state: toast error ถ้า API ล้มเหลว
+
+**Business Rules:**
+- ใช้ `supabase.auth.resetPasswordForEmail(email, { redirectTo: origin + '/reset-password' })`
+- **Security:** ไม่บอกผู้ใช้ว่า email มีอยู่ในระบบหรือไม่ (ป้องกัน email enumeration)
+- ถ้ามี session อยู่แล้ว → redirect `/dashboard`
+
+---
+
+### 4.7 หน้า Set New Password
+
+**Path:** `/reset-password`
+
+**Elements:**
+- Logo / ชื่อแอพ
+- "ตั้งรหัสผ่านใหม่" heading
+- Input: รหัสผ่านใหม่ (`type="password"`, `autocomplete="new-password"`, min 8)
+- Input: ยืนยันรหัสผ่านใหม่ (`type="password"`, min 8)
+- ปุ่ม "ตั้งรหัสผ่านใหม่"
+- ข้อความ Error กรณีไม่ตรง / สั้นไป
+
+**Business Rules:**
+- ตรวจสอบ recovery session จาก `PASSWORD_RECOVERY` event
+- ถ้าไม่มี recovery session → redirect `/forgot-password` พร้อม error toast
+- ใช้ `supabase.auth.updateUser({ password })` เพื่อตั้งรหัสผ่านใหม่
+- หลังตั้งสำเร็จ → toast "ตั้งรหัสผ่านใหม่สำเร็จ ✓" → redirect `/login`
+- ถ้ามี session ปกติ → redirect `/dashboard`
 
 ---
 
@@ -814,6 +886,7 @@ src/
 │   ├── SymptomCard.vue        # ปุ่มเลือกอาการ (รับ color + label + emoji)
 │   └── ToastContainer.vue     # Toast แจ้งเตือน
 ├── composables/
+│   ├── useDarkMode.js         # Dark mode toggle + system preference detection (v4.0.0)
 │   ├── useExportPdf.js        # html2canvas + jsPDF (iOS PWA full capture + multi-page)
 │   └── useToast.js            # Global toast state
 ├── constants/
@@ -824,6 +897,8 @@ src/
 │   ├── LoginPage.vue
 │   ├── RegisterPage.vue       # includes first_name + last_name fields
 │   ├── VerifyEmailPage.vue    # หน้ารอ confirm email
+│   ├── ForgotPasswordPage.vue # กรอก email สำหรับ reset password (v4.0.0)
+│   ├── ResetPasswordPage.vue  # ตั้งรหัสผ่านใหม่ (v4.0.0)
 │   ├── DashboardPage.vue      # date picker + symptom cards + avatar header
 │   ├── SummaryPage.vue        # month picker + calendar + legend + export PDF
 │   └── ProfilePage.vue        # profile card, avatar upload, child info, gender, age calc
@@ -858,6 +933,8 @@ src/
 | `/login` | `Login` | LoginPage | ❌ | — | มีปุ่ม "ทดลองใช้งาน" |
 | `/register` | `Register` | RegisterPage | ❌ | — | ถ้ามาจาก Guest → pre-fill ไม่ได้ แต่ migration หลัง confirm |
 | `/verify` | `VerifyEmail` | VerifyEmailPage | ❌ | — | หลังสมัคร, แสดง "กรุณาตรวจสอบอีเมล" |
+| `/forgot-password` | `ForgotPassword` | ForgotPasswordPage | ❌ | — | กรอก email เพื่อรับลิงก์ตั้งรหัสผ่านใหม่ |
+| `/reset-password` | `ResetPassword` | ResetPasswordPage | ❌ | — | ตั้งรหัสผ่านใหม่ (ต้องมี recovery session) |
 | `/` | — | — | — | — | redirect → `/login` |
 | `/dashboard` | `Dashboard` | DashboardPage | ✅ | ✅ | Guest: ใช้ localStorage; Auth: ใช้ Supabase |
 | `/summary` | `Summary` | SummaryPage | ✅ | ✅ | Guest: ใช้ localStorage; Auth: ใช้ Supabase |
@@ -871,6 +948,8 @@ if (auth.loading) return                         // ← ไม่ redirect (load
 if (to.meta.requiresAuth && !auth.session && !auth.isGuest) return '/login'
 if (to.path === '/login' && auth.session) return '/dashboard'
 if (to.path === '/register' && auth.session) return '/dashboard'
+if (to.path === '/forgot-password' && auth.session) return '/dashboard'
+// reset-password: ปล่อยผ่าน — ตรวจสอบ recovery session ใน component
 // Guest: อนุญาตให้เข้าถึงหน้าที่มี meta.guestAllowed หรือ meta.requiresAuth (โดยนัย)
 ```
 
@@ -1233,12 +1312,359 @@ Component `GuestBanner.vue` (หรือ inline ในแต่ละ page):
 | Guest migrate ซ้ำ (migrate → logout → migrate อีก) | Duplicate rows ใน daily_logs | upsert with `onConflict: user_id,log_date` ป้องกัน duplicate |
 | localStorage ไม่พร้อมใช้งาน (Safari private mode) | Guest mode ใช้ไม่ได้ | fallback: แจ้งว่า browser นี้ไม่รองรับ Guest Mode |
 
+## 16. Dark Mode (v4.0.0)
+
+**เป้าหมาย:** ให้แอพรองรับ Dark Mode โดยผู้ใช้สามารถเลือกด้วยตนเอง (Manual toggle) และระบบจะตรวจจับค่าเริ่มต้นจากระบบปฏิบัติการ
+
 ---
 
-## 16. Out of Scope (v1)
+### 16.1 Approach
+
+ใช้ **Tailwind CSS class-based dark mode** (`dark:` variants) ร่วมกับ **CSS custom properties** ที่ switch ค่าตาม `.dark` class บน `<html>` element
+
+```
+┌────────────────────────────────────┐
+│ User Preferences                   │
+│  ┌─ prefers-color-scheme (System) ─┤
+│  │  • dark  → auto-set `.dark`     │
+│  │  • light → default (no class)   │
+│  ├─ Manual Toggle ─────────────────┤
+│  │  • กด toggle → สลับ `.dark`     │
+│  │  • บันทึกค่าใน localStorage      │
+│  │    key: "kidhealth-dark-mode"    │
+│  └─────────────────────────────────┘
+│                                     │
+│ Priority: manual > system           │
+└─────────────────────────────────────┘
+```
+
+**Key decisions:**
+- **Class-based dark mode** (ไม่ใช้ `prefers-color-scheme` media query เพียงอย่างเดียว) เพื่อให้ผู้ใช้เลือกเองได้
+- ใช้ `.dark` class บน `<html>` เพื่อ trigger Tailwind `dark:` variants
+- ใช้ CSS custom properties สำหรับ design tokens ที่ไม่ใช่ Tailwind utility
+- **Symptom colors ไม่เปลี่ยน** — สีอาการเป็น identity ของแอพ ต้องคงเดิมทั้ง light และ dark mode
+
+---
+
+### 16.2 Dark Mode Color Tokens
+
+| Token | Light | Dark | หมายเหตุ |
+|-------|-------|------|----------|
+| `--color-bg` | `#F8FAFC` | `#0F172A` | พื้นหลัง app |
+| `--color-surface` | `#FFFFFF` | `#1E293B` | card, modal, nav |
+| `--color-surface-elevated` | `#FFFFFF` | `#334155` | dropdown, modal |
+| `--color-border` | `#E2E8F0` | `#334155` | เส้นขอบทั่วไป |
+| `--color-border-subtle` | `#F1F5F9` | `#1E293B` | เส้นแบ่งภายใน card |
+| `--color-text-primary` | `#0F172A` | `#F1F5F9` | heading, label |
+| `--color-text-secondary` | `#475569` | `#CBD5E1` | body text |
+| `--color-text-muted` | `#94A3B8` | `#64748B` | placeholder, caption |
+| `--color-primary` | `#0EA5E9` | `#38BDF8` | CTA หลัก (สว่างขึ้นใน dark) |
+| `--color-primary-dark` | `#0284C7` | `#7DD3FC` | hover state primary |
+
+**Symptom colors (คงเดิม — ไม่เปลี่ยน):**
+
+| อาการ | Light/Dark Color |
+|-------|-----------------|
+| ปกติ | `#22C55E` |
+| น้ำมูกใส | `#3B82F6` |
+| มีไข้ | `#F97316` |
+| ไข้ + น้ำมูกใส | `#EF4444` |
+| น้ำมูกเขียว | `#84CC16` |
+| ไข้ + น้ำมูกเขียว | `#78716C` |
+| ไม่มีข้อมูล | `#334155` (dark) / `#F1F5F9` (light) |
+
+---
+
+### 16.3 Component Dark Mode Adaptations
+
+| Component | Light | Dark | Notes |
+|-----------|-------|------|-------|
+| **Page bg** | `bg-slate-50` | `dark:bg-slate-900` | |
+| **Card** | `bg-white` | `dark:bg-slate-800` | shadow opacity reduced |
+| **Input** | `bg-slate-50` | `dark:bg-slate-800` | border unchanged |
+| **Button Primary** | `bg-sky-500` | `dark:bg-sky-400` | text #fff |
+| **Button Danger** | `bg-white, border-red-300` | `dark:bg-slate-800, dark:border-red-400` | |
+| **Bottom Nav** | `bg-white` | `dark:bg-slate-800` | border-top |
+| **Toast** | `bg-slate-900` | `dark:bg-white` | text inverted |
+| **Calendar cell (no data)** | `#F1F5F9` | `#334155` | |
+| **Symptom Card (unselected)** | tint bg | tint bg (keep tint) | slightly darker tint |
+| **Guest Banner** | `bg-amber-50` | `dark:bg-amber-900/30` | text amber-900→amber-200 |
+| **Calendar today outline** | `#0EA5E9` | `#38BDF8` | brighter |
+| **MonthPicker arrow** | `text-slate-600` | `dark:text-slate-300` | |
+| **Legend count** | `text-slate-600` | `dark:text-slate-300` | |
+
+---
+
+### 16.4 Implementation
+
+#### 16.4.1 Composable: `useDarkMode.js`
+
+```js
+// src/composables/useDarkMode.js
+import { ref, onMounted } from 'vue'
+
+const isDark = ref(false)
+const KEY = 'kidhealth-dark-mode'
+
+function applyDark(value) {
+  if (value) {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+  isDark.value = value
+}
+
+export function useDarkMode() {
+  onMounted(() => {
+    const stored = localStorage.getItem(KEY)
+    if (stored === 'on') { applyDark(true); return }
+    if (stored === 'off') { applyDark(false); return }
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    applyDark(prefersDark)
+  })
+
+  function toggle() {
+    const next = !isDark.value
+    applyDark(next)
+    localStorage.setItem(KEY, next ? 'on' : 'off')
+    updateThemeColor(next)
+  }
+
+  function updateThemeColor(dark) {
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.content = dark ? '#0F172A' : '#F8FAFC'
+  }
+
+  return { isDark, toggle }
+}
+```
+
+#### 16.4.2 Tailwind v4 Configuration
+
+```css
+/* src/style.css — เปิดใช้ class-based dark mode */
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+```
+
+#### 16.4.3 Dark Mode Toggle UI
+
+Toggle switch ใน **Profile Page** (ใต้ stats section):
+
+```html
+<label class="dark-mode-toggle flex items-center justify-between py-3">
+  <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">
+    🌙 โหมดมืด
+  </span>
+  <button
+    type="button"
+    role="switch"
+    :aria-checked="isDark"
+    class="toggle-switch"
+    :class="{ 'toggle-switch--active': isDark }"
+    @click="toggle"
+  >
+    <span class="toggle-knob"></span>
+  </button>
+</label>
+```
+
+#### 16.4.4 Files Modified
+
+| File | Change |
+|------|--------|
+| `src/composables/useDarkMode.js` | **New** — composable สำหรับ manage dark mode |
+| `src/style.css` / `tokens.css` | เพิ่ม `@custom-variant dark` + dark mode CSS custom properties |
+| `src/pages/ProfilePage.vue` | เพิ่ม Dark Mode toggle switch |
+| `index.html` | เพิ่ม `<meta name="color-scheme" content="light dark">` |
+| `src/composables/useExportPdf.js` | บังคับ light mode ก่อน capture |
+| ทุก component template | ใช้ `dark:` utility class |
+
+---
+
+### 16.5 Edge Cases
+
+| State | Behavior |
+|-------|----------|
+| localStorage ไม่มีค่า | ใช้ system preference (`prefers-color-scheme`) |
+| User ปิด system dark mode แต่เลือก manual dark | ใช้ manual (priority) |
+| Clear browser data | localStorage ถูกลบ → กลับไป system preference |
+| iOS PWA | dark mode ทำงานผ่าน class-based |
+| Export PDF | html2canvas บังคับ light mode ชั่วคราว |
+| PWA theme-color | อัปเดตตาม mode (#F8FAFC light / #0F172A dark) |
+
+---
+
+### 16.6 Accessibility
+
+- Dark mode toggle มี label ชัดเจน: "โหมดมืด" / "โหมดสว่าง"
+- Contrast ratio ยังคง ≥ 4.5:1 ใน dark mode
+- Focus ring ใช้ `--color-primary` (สว่างขึ้นใน dark)
+- ไม่ใช้สีเป็นข้อมูลเดียว — dark mode ยังคงมี emoji + label เหมือนเดิม
+
+---
+
+## 17. Forgot Password (v4.0.0)
+
+**เป้าหมาย:** ให้ผู้ใช้สามารถรีเซ็ตรหัสผ่านด้วยตนเอง ผ่านฟีเจอร์ Forgot Password ของ Supabase Auth พร้อม UI ที่ออกแบบเอง
+
+---
+
+### 17.1 Flow Overview
+
+```
+User คลิก "ลืมรหัสผ่าน?" ที่หน้า Login
+  → ไปหน้า /forgot-password
+  → กรอก Email → กด "ส่งลิงก์ตั้งรหัสผ่านใหม่"
+  → Supabase ส่ง email พร้อม link (redirectTo: /reset-password)
+  → User เปิด link → ไปที่ /reset-password#access_token=...
+  → ตรวจจับ recovery session (PASSWORD_RECOVERY event)
+  → แสดงฟอร์มตั้งรหัสผ่านใหม่
+  → กรอกรหัสผ่านใหม่ + ยืนยัน → updateUser({ password })
+  → สำเร็จ → toast → redirect /login
+```
+
+---
+
+### 17.2 Pages
+
+#### 17.2.1 ForgotPasswordPage (`/forgot-password`)
+
+**Elements:**
+- Logo / ชื่อแอพ (เหมือนหน้า Login)
+- คำอธิบายสั้น: "ป้อนอีเมลที่ใช้สมัครสมาชิก เราจะส่งลิงก์ตั้งรหัสผ่านใหม่ให้คุณ"
+- Input: Email (`type="email"`, `autocomplete="email"`)
+- ปุ่ม "ส่งลิงก์ตั้งรหัสผ่านใหม่"
+- Link "กลับไปหน้า Login"
+- Success state: แทนที่ form ด้วยข้อความ "📧 กรุณาตรวจสอบอีเมลของท่าน"
+- Error state: toast error ถ้า API ล้มเหลว
+
+**Business Rules:**
+- ใช้ `supabase.auth.resetPasswordForEmail(email, { redirectTo: origin + '/reset-password' })`
+- **Security:** ไม่บอกผู้ใช้ว่า email มีอยู่ในระบบหรือไม่ — แสดง success message เสมอ (ป้องกัน email enumeration)
+- ถ้ามี session อยู่แล้ว → redirect `/dashboard`
+- Loading state: ปุ่ม "กำลังส่ง..."
+
+#### 17.2.2 ResetPasswordPage (`/reset-password`)
+
+**Elements:**
+- Logo / ชื่อแอพ
+- "ตั้งรหัสผ่านใหม่" heading
+- Input: รหัสผ่านใหม่ (`type="password"`, `autocomplete="new-password"`, min 8)
+- Input: ยืนยันรหัสผ่านใหม่ (`type="password"`, min 8)
+- ปุ่ม "ตั้งรหัสผ่านใหม่"
+- ข้อความ Error กรณีไม่ตรง / สั้นไป
+
+**Business Rules:**
+- **ตรวจสอบ recovery session:** ฟัง `supabase.auth.onAuthStateChange` event `PASSWORD_RECOVERY`
+- ถ้าไม่มี recovery session → redirect `/forgot-password` พร้อม error toast "ลิงก์ไม่ถูกต้องหรือหมดอายุ"
+- ใช้ `supabase.auth.updateUser({ password })` เพื่อตั้งรหัสผ่านใหม่
+- Validate ฝั่ง client: password ≥ 8 ตัว, password ตรงกัน
+- หลังตั้งสำเร็จ → toast "ตั้งรหัสผ่านใหม่สำเร็จ ✓" → redirect `/login`
+- ถ้ามี session ปกติ → redirect `/dashboard`
+
+---
+
+### 17.3 Auth Store Changes
+
+เพิ่ม state และ action ใน `src/stores/auth.js`:
+
+```js
+state: () => ({
+  // ...existing state
+  isPasswordRecovery: false,   // ← NEW
+}),
+actions: {
+  async resetPassword(email) {
+    return supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+  },
+  async updatePassword(password) {
+    const { error } = await supabase.auth.updateUser({ password })
+    if (!error) this.isPasswordRecovery = false
+    return { error }
+  },
+}
+```
+
+**onAuthStateChange handler อัปเดต:**
+
+```js
+supabase.auth.onAuthStateChange((event, session) => {
+  this.session = session
+  this.user = session?.user ?? null
+  if (event === 'PASSWORD_RECOVERY') this.isPasswordRecovery = true
+  if (event === 'SIGNED_OUT') this.isPasswordRecovery = false
+})
+```
+
+---
+
+### 17.4 Route Integration
+
+**Routes:**
+| Path | Name | Component | Auth Required | Notes |
+|------|------|-----------|---------------|-------|
+| `/forgot-password` | `ForgotPassword` | ForgotPasswordPage | ❌ | ถ้ามี session → redirect /dashboard |
+| `/reset-password` | `ResetPassword` | ResetPasswordPage | ❌ | ตรวจสอบ recovery session ใน component |
+
+**Auth Guard เพิ่มเติม:**
+
+```js
+if (to.path === '/forgot-password' && auth.session) return '/dashboard'
+// reset-password: guard ปล่อยผ่าน — ตรวจสอบ recovery session ใน component
+```
+
+---
+
+### 17.5 Supabase Configuration
+
+**ต้องตั้งค่าใน Supabase Dashboard:**
+1. Authentication → Settings → **Redirect URLs** → เพิ่ม `${origin}/reset-password`
+2. Authentication → Email Templates → **Reset Password** → แก้ไข template ถ้าต้องการ (ใช้ default ได้)
+3. ตรวจสอบว่า **Confirm email** เปิดอยู่แล้ว (required สำหรับ password reset)
+
+**Email Template แนะนำ:**
+```
+Subject: ตั้งรหัสผ่านใหม่สำหรับ KidHealth Tracker
+
+คลิกที่ลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ของคุณ:
+
+{{ .ConfirmationURL }}
+
+ลิงก์นี้จะหมดอายุใน 1 ชั่วโมง
+```
+
+---
+
+### 17.6 Edge Cases
+
+| State | Behavior |
+|-------|----------|
+| User กรอก email ที่ไม่มีในระบบ | แสดง success "กรุณาตรวจสอบอีเมล" (ป้องกัน enumeration) |
+| recovery link หมดอายุ → ไม่มี recovery session | redirect /forgot-password พร้อม toast error |
+| User refresh ที่ /reset-password | ถ้า recovery session ยังอยู่ → ยังตั้งได้; ถ้าหมด → redirect |
+| User มี session ปกติ (login อยู่) แล้วกดลืมรหัสผ่าน | redirect /dashboard |
+| Recovery → set password → session เปลี่ยนเป็นปกติ | redirect /login (ให้ login ใหม่ด้วย password ใหม่) |
+| Network error ตอน updateUser | toast error + ให้ลองอีกครั้ง |
+
+---
+
+### 17.7 Files
+
+| File | Change |
+|------|--------|
+| `src/pages/ForgotPasswordPage.vue` | **New** — ฟอร์มกรอก email |
+| `src/pages/ResetPasswordPage.vue` | **New** — ฟอร์มตั้งรหัสผ่านใหม่ |
+| `src/router/index.js` | เพิ่ม 2 routes + guard logic |
+| `src/stores/auth.js` | เพิ่ม `isPasswordRecovery`, `resetPassword()`, `updatePassword()`, event handler |
+
+---
+
+## 18. Out of Scope (v4)
 
 - ❌ รองรับหลายโปรไฟล์เด็ก
 - ❌ Push notification
 - ❌ Export CSV (ทำได้ทาง PDF เท่านั้น)
-- ❌ Dark mode
-- ❌ Forgot password (ทำได้ผ่าน Supabase default แต่ไม่ได้ design หน้า UI)
