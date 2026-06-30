@@ -254,7 +254,7 @@ async function handleFileChange(event) {
                 v-model="childBirthday"
                 type="date"
                 :max="new Date().toISOString().split('T')[0]"
-                class="input child-info-row__input"
+                class="input input--date child-info-row__input"
               />
               <span v-if="ageText" class="child-info-row__age">{{ ageText }}</span>
             </div>
@@ -513,6 +513,7 @@ async function handleFileChange(event) {
   width: 100%;
   margin-left: 0;
   align-items: flex-start;
+  overflow: hidden;
 }
 
 .child-info-row--stacked .child-info-row__input {
