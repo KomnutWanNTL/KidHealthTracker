@@ -1,13 +1,16 @@
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue'
 import { useLogsStore } from '@/stores/logs'
+import { useAuthStore } from '@/stores/auth'
 import { useExportPdf } from '@/composables/useExportPdf'
 import { useToast } from '@/composables/useToast'
 import MonthPicker from '@/components/MonthPicker.vue'
+import GuestBanner from '@/components/GuestBanner.vue'
 import CalendarGrid from '@/components/CalendarGrid.vue'
 import Legend from '@/components/Legend.vue'
 
 const logs = useLogsStore()
+const auth = useAuthStore()
 const { exportCalendar } = useExportPdf()
 const { success, error: showError } = useToast()
 
@@ -59,6 +62,8 @@ watch([year, month], loadMonth)
       </div>
     </header>
 
+    <GuestBanner />
+
     <MonthPicker
       :year="year"
       :month="month"
@@ -90,6 +95,8 @@ watch([year, month], loadMonth)
         ← กลับไปบันทึก
       </router-link>
     </div>
+
+    <p v-if="auth.isGuest" class="guest-hint">💾 ข้อมูลจากโหมดทดลอง (บันทึกในเครื่อง)</p>
   </div>
 </template>
 
@@ -125,5 +132,12 @@ watch([year, month], loadMonth)
   flex-direction: column;
   gap: var(--space-3);
   margin-top: var(--space-5);
+}
+
+.guest-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: var(--space-3);
 }
 </style>

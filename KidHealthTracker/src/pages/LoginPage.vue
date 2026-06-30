@@ -26,6 +26,11 @@ async function handleLogin() {
     router.push('/dashboard')
   }
 }
+
+function handleGuestMode() {
+  auth.enterGuestMode()
+  router.push('/dashboard')
+}
 </script>
 
 <template>
@@ -77,6 +82,15 @@ async function handleLogin() {
           สมัครสมาชิก
         </button>
       </form>
+
+      <div class="auth-divider">
+        <span>หรือ</span>
+      </div>
+
+      <button type="button" class="btn btn--ghost" @click="handleGuestMode">
+        🚀 ทดลองใช้งาน
+      </button>
+      <p class="auth-guest-note">ไม่ต้องสมัครสมาชิก ข้อมูลถูกบันทึกในเครื่อง</p>
 
       <p class="auth-foot">
         ยังไม่มีบัญชี?
@@ -132,6 +146,34 @@ async function handleLogin() {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.auth-divider span {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.auth-guest-note {
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
 }
 
 .auth-foot {

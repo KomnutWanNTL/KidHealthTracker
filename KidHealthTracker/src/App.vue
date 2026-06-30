@@ -9,7 +9,7 @@ const auth = useAuthStore()
 const route = useRoute()
 
 const showBottomNav = computed(() =>
-  auth.session && ['Dashboard', 'Summary', 'Profile'].includes(route.name),
+  (auth.session || auth.isGuest) && ['Dashboard', 'Summary', 'Profile'].includes(route.name),
 )
 </script>
 

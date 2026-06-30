@@ -6,6 +6,7 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
 import SymptomCard from '@/components/SymptomCard.vue'
+import GuestBanner from '@/components/GuestBanner.vue'
 
 const logs = useLogsStore()
 const auth = useAuthStore()
@@ -18,6 +19,7 @@ const selectedSymptom = ref(null)
 const saving = ref(false)
 
 const greetingName = computed(() => {
+  if (auth.isGuest) return 'ผู้ใช้ทดลอง'
   const childName = profileStore.profile?.child_name
   if (childName) return `พ่อแม่น้อง${childName}`
   const firstName = profileStore.profile?.first_name
@@ -56,7 +58,11 @@ async function handleSave() {
   saving.value = true
   try {
     await logs.upsertLog(selectedDate.value, selectedSymptom.value)
-    success('✓ บันทึกอาการเรียบร้อย')
+    if (auth.isGuest) {
+      success('✓ บันทึกอาการแล้ว (บันทึกในเครื่อง)')
+    } else {
+      success('✓ บันทึกอาการเรียบร้อย')
+    }
   } catch (e) {
     showError(e.message || 'บันทึกไม่สำเร็จ')
   } finally {
@@ -65,7 +71,9 @@ async function handleSave() {
 }
 
 onMounted(async () => {
-  profileStore.fetchProfile().catch(() => {})
+  if (!auth.isGuest) {
+    profileStore.fetchProfile().catch(() => {})
+  }
   await loadLog()
 })
 watch(selectedDate, loadLog)
@@ -78,11 +86,14 @@ watch(selectedDate, loadLog)
         <span class="eyebrow">บันทึกอาการ</span>
         <h1 class="t-page-heading">สวัสดี {{ greetingName }} 👋</h1>
       </div>
-      <router-link to="/profile" class="avatar" aria-label="โปรไฟล์">
+      <router-link v-if="!auth.isGuest" to="/profile" class="avatar" aria-label="โปรไฟล์">
         <img v-if="profileStore.profile?.avatar_url" :src="profileStore.profile.avatar_url" alt="" class="avatar-img" />
         <span v-else>{{ childIcon }}</span>
       </router-link>
+      <span v-else class="avatar" aria-label="ผู้ใช้ทดลอง">{{ childIcon }}</span>
     </header>
+
+    <GuestBanner />
 
     <section class="card date-card">
       <label for="log-date" class="card__label">เลือกวันที่</label>
@@ -121,6 +132,8 @@ watch(selectedDate, loadLog)
     >
       {{ saving ? 'กำลังบันทึก...' : 'บันทึกอาการ' }}
     </button>
+
+    <p v-if="auth.isGuest" class="guest-hint">💾 ข้อมูลถูกบันทึกในเครื่องนี้เท่านั้น</p>
   </div>
 </template>
 
@@ -180,6 +193,13 @@ watch(selectedDate, loadLog)
 
 .save-btn {
   margin-top: var(--space-5);
+}
+
+.guest-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
 }
 
 @media (max-width: 374px) {

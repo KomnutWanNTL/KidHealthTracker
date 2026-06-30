@@ -53,7 +53,7 @@ const router = createRouter({
 router.beforeEach((to) => {
   const auth = useAuthStore()
   if (auth.loading) return
-  if (to.meta.requiresAuth && !auth.session) return '/login'
+  if (to.meta.requiresAuth && !auth.session && !auth.isGuest) return '/login'
   if ((to.path === '/login' || to.path === '/register') && auth.session) return '/dashboard'
 })
 

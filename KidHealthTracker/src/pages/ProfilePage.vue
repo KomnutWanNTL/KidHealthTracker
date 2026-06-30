@@ -7,6 +7,7 @@ import { useProfileStore } from '@/stores/profile'
 import { useToast } from '@/composables/useToast'
 import { version } from '../../package.json'
 import heic2any from 'heic2any'
+import GuestBanner from '@/components/GuestBanner.vue'
 
 const auth = useAuthStore()
 const logs = useLogsStore()
@@ -42,6 +43,14 @@ const fullName = computed(() => {
 
 const email = computed(() => auth.user?.email || '')
 
+const guestLogCount = computed(() => {
+  if (!auth.isGuest) return 0
+  const guestLogs = JSON.parse(localStorage.getItem('guestLogs') || '{}')
+  const guestId = localStorage.getItem('guest_id')
+  const logs = guestLogs[guestId]
+  return logs ? Object.keys(logs).length : 0
+})
+
 const ageText = computed(() => {
   if (!childBirthday.value) return null
   const birth = new Date(childBirthday.value + 'T00:00:00')
@@ -68,6 +77,7 @@ const ageText = computed(() => {
 })
 
 onMounted(async () => {
+  if (auth.isGuest) return
   if (!auth.user) return
   const now = new Date()
   const y = now.getFullYear()
@@ -193,101 +203,117 @@ async function handleFileChange(event) {
       </div>
     </header>
 
-    <section class="profile-card">
-      <div class="profile-card__header">
-        <div class="profile-avatar-wrap" @click="triggerFileInput" role="button" tabindex="0" @keydown.enter="triggerFileInput" :title="uploading ? 'กำลังอัปโหลด...' : 'เปลี่ยนรูปโปรไฟล์'">
-          <img v-if="avatarUrl" :src="avatarUrl" alt="รูปโปรไฟล์" class="avatar-img" />
-          <span v-else class="avatar-fallback" aria-hidden="true">{{ avatarFallback }}</span>
-          <div class="avatar-overlay">
-            <span v-if="uploading" class="avatar-overlay__text">กำลังอัปโหลด...</span>
-            <span v-else class="avatar-overlay__text">เปลี่ยน</span>
+    <GuestBanner />
+
+    <template v-if="!auth.isGuest">
+      <section class="profile-card">
+        <div class="profile-card__header">
+          <div class="profile-avatar-wrap" @click="triggerFileInput" role="button" tabindex="0" @keydown.enter="triggerFileInput" :title="uploading ? 'กำลังอัปโหลด...' : 'เปลี่ยนรูปโปรไฟล์'">
+            <img v-if="avatarUrl" :src="avatarUrl" alt="รูปโปรไฟล์" class="avatar-img" />
+            <span v-else class="avatar-fallback" aria-hidden="true">{{ avatarFallback }}</span>
+            <div class="avatar-overlay">
+              <span v-if="uploading" class="avatar-overlay__text">กำลังอัปโหลด...</span>
+              <span v-else class="avatar-overlay__text">เปลี่ยน</span>
+            </div>
+            <div v-if="uploading" class="avatar-spinner"></div>
           </div>
-          <div v-if="uploading" class="avatar-spinner"></div>
-        </div>
-        <input ref="fileInput" type="file" accept="image/jpeg,image/png,image/heic,image/heif" hidden @change="handleFileChange" />
-        <div>
-          <p class="profile-card__name">{{ fullName }}</p>
-          <p class="profile-card__email">{{ email || '—' }}</p>
-        </div>
-      </div>
-
-      <div class="profile-card__body">
-        <div class="profile-row">
-          <span class="profile-row__icon" aria-hidden="true">👶</span>
-          <label for="child-name" class="profile-row__label">ชื่อลูก</label>
-          <input
-            id="child-name"
-            v-model="childName"
-            type="text"
-            class="input profile-row__input"
-            placeholder="ชื่อลูกของคุณ"
-          />
-        </div>
-
-        <div class="profile-row">
-          <span class="profile-row__icon" aria-hidden="true">🎂</span>
-          <label for="child-birthday" class="profile-row__label">วันเกิดลูก</label>
-          <input
-            id="child-birthday"
-            v-model="childBirthday"
-            type="date"
-            :max="new Date().toISOString().split('T')[0]"
-            class="input profile-row__input profile-row__input--date"
-          />
-        </div>
-
-        <div class="profile-row">
-          <span class="profile-row__icon" aria-hidden="true">⚤</span>
-          <label for="child-gender" class="profile-row__label">เพศลูก</label>
-          <div class="profile-row__gender">
-            <button
-              type="button"
-              class="gender-btn"
-              :class="{ 'gender-btn--active': childGender === 'male' }"
-              @click="childGender = 'male'"
-            >👦 ชาย</button>
-            <button
-              type="button"
-              class="gender-btn"
-              :class="{ 'gender-btn--active': childGender === 'female' }"
-              @click="childGender = 'female'"
-            >👧 หญิง</button>
+          <input ref="fileInput" type="file" accept="image/jpeg,image/png,image/heic,image/heif" hidden @change="handleFileChange" />
+          <div>
+            <p class="profile-card__name">{{ fullName }}</p>
+            <p class="profile-card__email">{{ email || '—' }}</p>
           </div>
         </div>
 
-        <div v-if="ageText" class="profile-row profile-row--age">
-          <span class="profile-row__icon" aria-hidden="true">📅</span>
-          <span class="profile-row__label">อายุ</span>
-          <span class="profile-row__value">{{ ageText }}</span>
+        <div class="profile-card__body">
+          <div class="profile-row">
+            <span class="profile-row__icon" aria-hidden="true">👶</span>
+            <label for="child-name" class="profile-row__label">ชื่อลูก</label>
+            <input
+              id="child-name"
+              v-model="childName"
+              type="text"
+              class="input profile-row__input"
+              placeholder="ชื่อลูกของคุณ"
+            />
+          </div>
+
+          <div class="profile-row">
+            <span class="profile-row__icon" aria-hidden="true">🎂</span>
+            <label for="child-birthday" class="profile-row__label">วันเกิดลูก</label>
+            <input
+              id="child-birthday"
+              v-model="childBirthday"
+              type="date"
+              :max="new Date().toISOString().split('T')[0]"
+              class="input profile-row__input profile-row__input--date"
+            />
+          </div>
+
+          <div class="profile-row">
+            <span class="profile-row__icon" aria-hidden="true">⚤</span>
+            <label for="child-gender" class="profile-row__label">เพศลูก</label>
+            <div class="profile-row__gender">
+              <button
+                type="button"
+                class="gender-btn"
+                :class="{ 'gender-btn--active': childGender === 'male' }"
+                @click="childGender = 'male'"
+              >👦 ชาย</button>
+              <button
+                type="button"
+                class="gender-btn"
+                :class="{ 'gender-btn--active': childGender === 'female' }"
+                @click="childGender = 'female'"
+              >👧 หญิง</button>
+            </div>
+          </div>
+
+          <div v-if="ageText" class="profile-row profile-row--age">
+            <span class="profile-row__icon" aria-hidden="true">📅</span>
+            <span class="profile-row__label">อายุ</span>
+            <span class="profile-row__value">{{ ageText }}</span>
+          </div>
+
+          <div class="profile-row">
+            <span class="profile-row__icon" aria-hidden="true">📊</span>
+            <span class="profile-row__label">บันทึกเดือนนี้</span>
+            <span class="profile-row__value">{{ totalLogs }} วัน</span>
+          </div>
         </div>
+      </section>
 
-        <div class="profile-row">
-          <span class="profile-row__icon" aria-hidden="true">📊</span>
-          <span class="profile-row__label">บันทึกเดือนนี้</span>
-          <span class="profile-row__value">{{ totalLogs }} วัน</span>
-        </div>
-      </div>
-    </section>
-
-    <button
-      type="button"
-      @click="handleSave"
-      :disabled="saving"
-      class="btn btn--primary"
-    >
-      {{ saving ? 'กำลังบันทึก...' : 'บันทึก' }}
-    </button>
-
-    <div class="profile-logout">
       <button
         type="button"
-        @click="handleLogout"
-        :disabled="loggingOut"
-        class="btn btn--danger"
+        @click="handleSave"
+        :disabled="saving"
+        class="btn btn--primary"
       >
-        {{ loggingOut ? 'กำลังออกจากระบบ...' : 'ออกจากระบบ' }}
+        {{ saving ? 'กำลังบันทึก...' : 'บันทึก' }}
       </button>
-    </div>
+
+      <div class="profile-logout">
+        <button
+          type="button"
+          @click="handleLogout"
+          :disabled="loggingOut"
+          class="btn btn--danger"
+        >
+          {{ loggingOut ? 'กำลังออกจากระบบ...' : 'ออกจากระบบ' }}
+        </button>
+      </div>
+    </template>
+
+    <section v-else class="upgrade-card">
+      <div class="upgrade-card__icon" aria-hidden="true">🔒</div>
+      <h2 class="upgrade-card__title">บันทึกข้อมูลของคุณให้ถาวร</h2>
+      <p class="upgrade-card__desc">
+        คุณมีข้อมูล <strong>{{ guestLogCount }} รายการ</strong> ที่บันทึกไว้<br />
+        สมัครสมาชิกเพื่อไม่ให้ข้อมูลสูญหาย
+      </p>
+      <router-link to="/register" class="btn btn--primary upgrade-card__cta">
+        สมัครสมาชิก (คงข้อมูลเดิม)
+      </router-link>
+    </section>
 
     <p class="profile-version">เวอร์ชัน {{ version }}</p>
   </div>
@@ -463,6 +489,40 @@ async function handleFileChange(event) {
   background: #0EA5E9;
   border-color: #0EA5E9;
   color: #fff;
+}
+
+.upgrade-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-subtle);
+  padding: 32px 24px 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.upgrade-card__icon {
+  font-size: 48px;
+}
+
+.upgrade-card__title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.upgrade-card__desc {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.upgrade-card__cta {
+  margin-top: var(--space-2);
 }
 
 .profile-logout {

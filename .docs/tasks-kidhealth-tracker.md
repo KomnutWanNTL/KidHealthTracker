@@ -526,60 +526,61 @@ icons: [
 
 ### 17.1 Auth Store — Guest State & Actions
 
-- [ ] **M17.1.1** เพิ่ม state `isGuest` (bool), `guestId` (string|null) ใน `src/stores/auth.js`
-- [ ] **M17.1.2** เพิ่ม action `enterGuestMode()`:
+- [x] **M17.1.1** เพิ่ม state `isGuest` (bool), `guestId` (string|null) ใน `src/stores/auth.js`
+- [x] **M17.1.2** เพิ่ม action `enterGuestMode()`:
   - อ่าน/สร้าง `guest_id` จาก localStorage (`crypto.randomUUID()`)
   - set `isGuest=true`, `guestId=guid`
-  - เรียก `logs.setGuestMode(true)`
-- [ ] **M17.1.3** เพิ่ม action `exitGuestMode()`:
+  - เรียก `logs.setGuestMode(true)` + toast warning
+- [x] **M17.1.3** เพิ่ม action `exitGuestMode()`:
   - set `isGuest=false`, `guestId=null`
   - เรียก `logs.setGuestMode(false)`
-- [ ] **M17.1.4** เพิ่ม action `migrateGuestData()`:
+- [x] **M17.1.4** เพิ่ม action `migrateGuestData()` + `checkAndMigrateGuestData()`:
   - อ่าน guest logs จาก localStorage
   - upsert ทีละ record ไป `daily_logs` ด้วย `auth.user.id`
   - ลบ localStorage guest data หลัง migrate สำเร็จ
-  - return `{ migratedCount, errors }`
+  - return `migratedCount`
+  - auto-trigger จาก `onAuthStateChange` เมื่อ login
 
 ### 17.2 Router — อนุญาต Guest
 
-- [ ] **M17.2.1** แก้ `router.beforeEach`:
+- [x] **M17.2.1** แก้ `router.beforeEach`:
   ```js
   if (to.meta.requiresAuth && !auth.session && !auth.isGuest) return '/login'
   ```
 
 ### 17.3 Logs Store — localStorage Backend
 
-- [ ] **M17.3.1** เพิ่ม helper functions: `getGuestLogs()`, `saveGuestLogs()`
-- [ ] **M17.3.2** แก้ `fetchForDate()`: ถ้า `isGuest` → อ่านจาก localStorage
-- [ ] **M17.3.3** แก้ `fetchMonth()`: ถ้า `isGuest` → filter เดือนจาก localStorage
-- [ ] **M17.3.4** แก้ `upsertLog()`: ถ้า `isGuest` → upsert ไป localStorage (ยัง validate future-date)
+- [x] **M17.3.1** เพิ่ม helper functions: `getGuestLogs()`, `saveGuestLogs()`
+- [x] **M17.3.2** แก้ `fetchForDate()`: ถ้า `isGuest` → อ่านจาก localStorage
+- [x] **M17.3.3** แก้ `fetchMonth()`: ถ้า `isGuest` → filter เดือนจาก localStorage
+- [x] **M17.3.4** แก้ `upsertLog()`: ถ้า `isGuest` → upsert ไป localStorage (ยัง validate future-date)
 
 ### 17.4 UI — LoginPage
 
-- [ ] **M17.4.1** เพิ่ม `<hr>` divider + ปุ่ม "🚀 ทดลองใช้งาน" (type="button")
-- [ ] **M17.4.2** `@click` → `auth.enterGuestMode()` → `router.push('/dashboard')`
-- [ ] **M17.4.3** เพิ่มข้อความใต้ปุ่ม: "ไม่ต้องสมัครสมาชิก ข้อมูลถูกบันทึกในเครื่อง"
-- [ ] **M17.4.4** style `.btn--ghost` สำหรับปุ่ม Guest Mode
+- [x] **M17.4.1** เพิ่ม `or` divider + ปุ่ม "🚀 ทดลองใช้งาน" (type="button")
+- [x] **M17.4.2** `@click` → `auth.enterGuestMode()` → `router.push('/dashboard')`
+- [x] **M17.4.3** เพิ่มข้อความใต้ปุ่ม: "ไม่ต้องสมัครสมาชิก ข้อมูลถูกบันทึกในเครื่อง"
+- [x] **M17.4.4** style `.btn--ghost` + divider + guest note (`.btn--ghost` มีอยู่แล้วใน button.css)
 
 ### 17.5 UI — GuestBanner Component
 
-- [ ] **M17.5.1** สร้าง `src/components/GuestBanner.vue`:
+- [x] **M17.5.1** สร้าง `src/components/GuestBanner.vue`:
   - แถบสีเหลืองอ่อน (amber)
   - icon 🔒 + "โหมดทดลอง" + "ข้อมูลถูกบันทึกในเครื่องนี้เท่านั้น"
   - Link "สมัครเพื่อบันทึกถาวร" → `/register`
   - `v-if="auth.isGuest"`
-- [ ] **M17.5.2** เพิ่ม GuestBanner ใน DashboardPage, SummaryPage, ProfilePage
+- [x] **M17.5.2** เพิ่ม GuestBanner ใน DashboardPage, SummaryPage, ProfilePage
 
 ### 17.6 UI — DashboardPage Guest Mode
 
-- [ ] **M17.6.1** greeting: ถ้า `isGuest` → "สวัสดี ผู้ใช้ทดลอง 👋"
-- [ ] **M17.6.2** avatar link: ซ่อนหรือใช้ fallback icon เมื่อ Guest
-- [ ] **M17.6.3** Toast หลังบันทึก: "บันทึกอาการแล้ว (บันทึกในเครื่อง)"
+- [x] **M17.6.1** greeting: ถ้า `isGuest` → "สวัสดี ผู้ใช้ทดลอง 👋"
+- [x] **M17.6.2** avatar link: ซ่อนหรือใช้ fallback icon เมื่อ Guest
+- [x] **M17.6.3** Toast หลังบันทึก: "บันทึกอาการแล้ว (บันทึกในเครื่อง)"
 
 ### 17.7 UI — ProfilePage Guest Mode (Upgrade Prompt)
 
-- [ ] **M17.7.1** ถ้า `isGuest`: ซ่อน profile card, child info, logout
-- [ ] **M17.7.2** แสดง upgrade card:
+- [x] **M17.7.1** ถ้า `isGuest`: ซ่อน profile card, child info, logout ด้วย `<template v-if>`
+- [x] **M17.7.2** แสดง upgrade card:
   - icon 🔒 + "บันทึกข้อมูลของคุณให้ถาวร"
   - จำนวนวันที่บันทึก (จาก localStorage)
   - ปุ่ม "สมัครสมาชิก (คงข้อมูลเดิม)" → `/register`
@@ -587,22 +588,22 @@ icons: [
 
 ### 17.8 UI — SummaryPage Guest Mode
 
-- [ ] **M17.8.1** ใช้ localStorage data (ผ่าน logs store ที่ถูกแก้แล้ว)
-- [ ] **M17.8.2** Export PDF ใช้ได้เหมือนเดิม
+- [x] **M17.8.1** ใช้ localStorage data (ผ่าน logs store ที่ถูกแก้แล้ว) — CalendarGrid/Legend อ่านจาก `logs.monthLogs` โดยตรง
+- [x] **M17.8.2** Export PDF ใช้ได้เหมือนเดิม — GuestBanner + guest hint ด้านล่าง
 
 ### 17.9 Data Migration Flow
 
-- [ ] **M17.9.1** Trigger: `auth.onAuthStateChange` detect session change → migrate
-- [ ] **M17.9.2** อ่าน guest logs → upsert ทั้งหมด → `exitGuestMode()` → clear localStorage
-- [ ] **M17.9.3** Toast success: "นำเข้าข้อมูลที่ทดลองใช้เรียบร้อย ✓ (X รายการ)"
-- [ ] **M17.9.4** Safe rollback: ลบ guest data หลังจาก upsert สำเร็จเท่านั้น
-- [ ] **M17.9.5** ป้องกัน double migrate: ตรวจสอบ `guestLogs` ก่อน
+- [x] **M17.9.1** Trigger: `auth.onAuthStateChange` detect session change → `checkAndMigrateGuestData()`
+- [x] **M17.9.2** `migrateGuestData()`: อ่าน guest logs → upsert ทุก record → `exitGuestMode()` → clear localStorage
+- [x] **M17.9.3** Toast success: "นำเข้าข้อมูลที่ทดลองใช้เรียบร้อย ✓ (X รายการ)"
+- [x] **M17.9.4** Safe rollback: clear localStorage **เฉพาะเมื่อ** `!hasError` (ทุก record สำเร็จ)
+- [x] **M17.9.5** ป้องกัน double migrate: `checkAndMigrateGuestData()` ตรวจ `hasGuestData` ก่อน; หลัง migrate สำเร็จ localStorage ถูกลบ
 
 ### 17.10 Guest Warning Toast
 
-- [ ] **M17.10.1** ใน `auth.enterGuestMode()`: toast info
+- [x] **M17.10.1** ใน `auth.enterGuestMode()`: toast info
   - "🔒 ข้อมูลจะถูกบันทึกในเครื่องนี้เท่านั้น หากล้างข้อมูลใน browser จะสูญหาย"
-- [ ] **M17.10.2** ป้องกัน toast ซ้ำ (เช็คว่าเพิ่งเข้า Guest Mode หรือไม่)
+- [x] **M17.10.2** ป้องกัน toast ซ้ำ: `if (this.isGuest) return` ที่ต้น `enterGuestMode()`
 
 ---
 
