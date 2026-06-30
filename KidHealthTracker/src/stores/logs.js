@@ -77,6 +77,44 @@ export const useLogsStore = defineStore('logs', {
       this.monthLogs = map
       return map
     },
+    async getStreak() {
+      let count = 0
+      const today = new Date()
+      today.setHours(12, 0, 0, 0)
+
+      let cursor = new Date(today)
+      cursor.setDate(cursor.getDate() - 1)
+      cursor.setHours(12, 0, 0, 0)
+
+      while (true) {
+        const dateStr = cursor.toISOString().split('T')[0]
+        let hasLog = false
+
+        if (this.isGuest) {
+          const { guestId, logs } = getGuestLogs()
+          if (guestId && logs[dateStr]) hasLog = true
+        } else {
+          const year = cursor.getFullYear()
+          const month = cursor.getMonth() + 1
+          const prefix = `${year}-${String(month).padStart(2, '0')}`
+          const inCurrentMonth = Object.keys(this.monthLogs).some(k => k.startsWith(prefix))
+
+          if (!inCurrentMonth) {
+            await this.fetchMonth(year, month)
+          }
+
+          if (this.monthLogs[dateStr]) hasLog = true
+        }
+
+        if (!hasLog) break
+        count++
+        cursor.setDate(cursor.getDate() - 1)
+        cursor.setHours(12, 0, 0, 0)
+      }
+
+      return count
+    },
+
     async upsertLog(date, symptom) {
       const today = new Date().toISOString().split('T')[0]
       if (date > today) throw new Error('ไม่สามารถบันทึกวันในอนาคตได้')
