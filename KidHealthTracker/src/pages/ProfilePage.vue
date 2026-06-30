@@ -229,9 +229,11 @@ async function handleFileChange(event) {
         </div>
 
         <div class="child-info-card">
-          <div class="child-info-row">
-            <span class="child-info-row__icon" aria-hidden="true">👶</span>
-            <label for="child-name" class="child-info-row__label">ชื่อเล่น</label>
+          <div class="child-info-row child-info-row--stacked">
+            <div class="child-info-row__stacked-header">
+              <span class="child-info-row__icon" aria-hidden="true">👶</span>
+              <label for="child-name" class="child-info-row__label">ชื่อเล่น</label>
+            </div>
             <input
               id="child-name"
               v-model="childName"
@@ -241,9 +243,11 @@ async function handleFileChange(event) {
             />
           </div>
 
-          <div class="child-info-row">
-            <span class="child-info-row__icon" aria-hidden="true">🎂</span>
-            <label for="child-birthday" class="child-info-row__label">วันเกิด</label>
+          <div class="child-info-row child-info-row--stacked">
+            <div class="child-info-row__stacked-header">
+              <span class="child-info-row__icon" aria-hidden="true">🎂</span>
+              <label for="child-birthday" class="child-info-row__label">วันเกิด</label>
+            </div>
             <div class="child-info-row__right">
               <input
                 id="child-birthday"
@@ -491,9 +495,30 @@ async function handleFileChange(event) {
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
-  min-width: 0;
-  max-width: 160px;
-  overflow: hidden;
+}
+
+.child-info-row--stacked {
+  flex-wrap: wrap;
+  gap: 8px var(--space-3);
+}
+
+.child-info-row__stacked-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.child-info-row--stacked .child-info-row__right {
+  width: 100%;
+  margin-left: 0;
+  align-items: flex-start;
+}
+
+.child-info-row--stacked .child-info-row__input {
+  width: 100%;
+  max-width: none;
+  text-align: left;
 }
 
 .child-info-row__age {
