@@ -82,12 +82,13 @@ export const useLogsStore = defineStore('logs', {
       const today = new Date()
       today.setHours(12, 0, 0, 0)
 
+      const savedMonthLogs = { ...this.monthLogs }
+
       let cursor = new Date(today)
-      cursor.setDate(cursor.getDate() - 1)
       cursor.setHours(12, 0, 0, 0)
 
       while (true) {
-        const dateStr = cursor.toISOString().split('T')[0]
+        const dateStr = cursor.toISOString().split("T")[0]
         let hasLog = false
 
         if (this.isGuest) {
@@ -96,7 +97,7 @@ export const useLogsStore = defineStore('logs', {
         } else {
           const year = cursor.getFullYear()
           const month = cursor.getMonth() + 1
-          const prefix = `${year}-${String(month).padStart(2, '0')}`
+          const prefix = `${year}-${String(month).padStart(2, "0")}`
           const inCurrentMonth = Object.keys(this.monthLogs).some(k => k.startsWith(prefix))
 
           if (!inCurrentMonth) {
@@ -112,6 +113,7 @@ export const useLogsStore = defineStore('logs', {
         cursor.setHours(12, 0, 0, 0)
       }
 
+      this.monthLogs = savedMonthLogs
       return count
     },
 

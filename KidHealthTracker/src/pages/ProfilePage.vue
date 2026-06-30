@@ -256,16 +256,20 @@ async function handleFileChange(event) {
 
           <div class="child-info-row child-info-row--last">
             <span class="child-info-row__icon" aria-hidden="true">⚤</span>
-            <label class="child-info-row__label">เพศ</label>
-            <div class="child-info-row__gender">
+            <label id="child-gender-label" class="child-info-row__label">เพศ</label>
+            <div class="child-info-row__gender" role="radiogroup" aria-labelledby="child-gender-label">
               <button
                 type="button"
+                role="radio"
+                :aria-checked="childGender === 'female'"
                 class="gender-pill"
                 :class="{ 'gender-pill--active': childGender === 'female' }"
                 @click="childGender = 'female'"
               >👧 หญิง</button>
               <button
                 type="button"
+                role="radio"
+                :aria-checked="childGender === 'male'"
                 class="gender-pill"
                 :class="{ 'gender-pill--active': childGender === 'male' }"
                 @click="childGender = 'male'"
@@ -294,6 +298,8 @@ async function handleFileChange(event) {
       >
         {{ saving ? 'กำลังบันทึก...' : 'บันทึก' }}
       </button>
+
+      <hr>
 
       <div class="profile-logout">
         <button
