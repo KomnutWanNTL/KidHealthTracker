@@ -450,7 +450,6 @@ async function handleFileChange(event) {
   gap: var(--space-3);
   padding: 14px 0;
   border-bottom: 1px solid var(--color-border-subtle);
-  overflow: hidden;
 }
 
 .child-info-row--last {
@@ -473,14 +472,17 @@ async function handleFileChange(event) {
 }
 
 .child-info-row__input {
-  margin-left: auto;
-  max-width: 160px;
   padding: 8px 10px;
   font-size: 15px;
   font-weight: 600;
   text-align: right;
   border-radius: var(--radius-sm);
   min-height: 0;
+}
+
+.child-info-row > .child-info-row__input {
+  margin-left: auto;
+  max-width: 160px;
 }
 
 .child-info-row__right {
@@ -490,6 +492,8 @@ async function handleFileChange(event) {
   align-items: flex-end;
   gap: 2px;
   min-width: 0;
+  max-width: 160px;
+  overflow: hidden;
 }
 
 .child-info-row__age {
