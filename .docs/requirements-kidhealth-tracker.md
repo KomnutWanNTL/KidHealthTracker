@@ -20,27 +20,42 @@ flowchart TD
     CheckSession -- ใช่ --> Dashboard
     CheckSession -- ไม่มี --> AuthPage{เลือก}
 
-    AuthPage --> Login[login]
-    AuthPage --> Register[register]
+    AuthPage --> Login[เข้าสู่ระบบ]
+    AuthPage --> Register[สมัครสมาชิก]
+    AuthPage --> GuestMode[ทดลองใช้งาน<br/>Guest Mode]
+
+    GuestMode --> GuestDashboard[Dashboard<br/>แบบ Guest]
+    GuestDashboard --> SelectDateG[เลือกวันที่]
+    SelectDateG --> SelectSymptomG[เลือกอาการ]
+    SelectSymptomG --> SaveGuest[บันทึก<br/>(localStorage)]
+
+    GuestDashboard --> GoSummaryG[Summary<br/>แบบ Guest]
+    GuestDashboard --> GoProfileG[Profile<br/>แบบ Guest]
+
+    GoProfileG --> UpgradePrompt[แจ้ง<br/>"สมัครเพื่อบันทึกถาวร"]
+    UpgradePrompt --> Register
 
     Register --> FillRegister[กรอก Email + Password]
     FillRegister --> VerifyEmail[ยืนยัน Email]
-    VerifyEmail --> Dashboard
+    VerifyEmail --> MigrateData{"มีข้อมูล Guest?}
+    MigrateData -- ใช่ --> Migrate[ย้ายข้อมูล<br/>localStorage → Supabase]
+    Migrate --> Dashboard
+    MigrateData -- ไม่ --> Dashboard
 
     Login --> FillLogin[กรอก Email + Password]
     FillLogin --> LoginOK{Login สำเร็จ?}
-    LoginOK -- ใช่ --> Dashboard[dashboard]
+    LoginOK -- ใช่ --> Dashboard
     LoginOK -- ไม่ --> ErrLogin[แสดง Error]
     ErrLogin --> FillLogin
 
-    Dashboard -->     SelectDate[เลือกวันที่]
+    Dashboard --> SelectDate[เลือกวันที่]
     SelectDate --> SelectSymptom[เลือกอาการ 1 ใน 6]
-    SelectSymptom --> Save[กดบันทึก]
+    SelectSymptom --> Save[กดบันทึก (Supabase)]
     Save --> SaveOK{Upsert สำเร็จ?}
     SaveOK -- ใช่ --> SuccessMsg[แสดงข้อความยืนยัน]
     SaveOK -- ไม่ --> ErrSave[แสดง Error]
 
-    Dashboard --> GoSummary[summary]
+    Dashboard --> GoSummary[Summary]
     GoSummary --> PickMonth[เลือกเดือน/ปี]
     PickMonth --> ShowCalendar[แสดงปฏิทินสี]
     ShowCalendar --> ExportPDF[กด Export PDF]
@@ -60,25 +75,50 @@ sequenceDiagram
     actor User
     participant Vue as Vue App
     participant Supabase as Supabase Auth
+    participant LS as localStorage
 
     User->>Vue: เปิดแอพ
     Vue->>Vue: auth.init() → getSession()
     Vue->>Supabase: getSession()
-    alt มี session
+    alt มี session (Logged-in)
         Supabase-->>Vue: session valid
-        Vue->>Vue: ตั้งค่า session, loading = false
+        Vue->>Vue: ตั้งค่า session, isGuest=false, loading=false
         Vue->>Vue: app.use(router) → เริ่ม navigation
         Note over Vue: guard เห็น session → allow
         Vue-->>User: redirect /dashboard
     else ไม่มี session
         Supabase-->>Vue: null
-        Vue->>Vue: ตั้งค่า session=null, loading = false
+        Vue->>Vue: ตั้งค่า session=null, isGuest=false, loading=false
         Vue->>Vue: app.use(router) → เริ่ม navigation
         Note over Vue: root / → redirect /login
         Vue-->>User: แสดงหน้า /login
     end
 
-    User->>Vue: กรอก email + password
+    alt User เลือก Guest Mode
+        User->>Vue: คลิก "ทดลองใช้งาน"
+        Vue->>Vue: ตั้งค่า isGuest=true
+        Vue->>LS: สร้าง guest_id ใน localStorage (ถ้ายังไม่มี)
+        Vue-->>User: redirect /dashboard (โหมด Guest)
+        Note over User,Vue: ข้อมูลบันทึกที่ localStorage แทน Supabase
+    end
+
+    alt User สมัครสมาชิก (Guest → Registered)
+        User->>Vue: กรอกข้อมูลสมัครที่หน้า Register
+        Vue->>Supabase: signUp()
+        Supabase-->>Vue: ส่ง confirmation email
+        User->>Vue: ยืนยัน email + login
+        Vue->>Supabase: signInWithPassword()
+        Supabase-->>Vue: session token
+        Vue->>Vue: ตรวจสอบ localStorage ว่ามีข้อมูล Guest?
+        alt มีข้อมูล Guest
+            Vue->>Supabase: migrate guest logs → daily_logs
+            Vue->>LS: ลบข้อมูล Guest
+            Vue-->>User: toast "นำเข้าข้อมูลเรียบร้อย ✓"
+        end
+        Vue-->>User: redirect /dashboard
+    end
+
+    User->>Vue: กรอก email + password (Login ปกติ)
     Vue->>Supabase: signInWithPassword()
     alt สำเร็จ
         Supabase-->>Vue: session token
@@ -89,7 +129,7 @@ sequenceDiagram
     end
 ```
 
-### 2.3 Register Flow
+### 2.3 Register Flow (รวม Guest → Registered Migration)
 
 > **หมายเหตุ:** ส่ง `emailRedirectTo` = `window.location.origin + /login` ใน `options` ของ `signUp()`  
 > เพื่อให้หลังยืนยัน email แล้ว Supabase redirect ไปหน้า Login (ไม่ใช่ `localhost` ตามค่าเริ่มต้นของ SITE_URL)
@@ -98,10 +138,18 @@ sequenceDiagram
 sequenceDiagram
     actor User
     participant Vue as Vue App
+    participant Store as Auth Store
+    participant LS as localStorage
     participant Supabase as Supabase Auth
+    participant DB as Supabase DB
     participant Email as Email Provider
 
-    User->>Vue: กรอก email + password + confirm password
+    alt Register from Guest Mode (มีข้อมูลเก่า)
+        User->>Vue: คลิก "สมัครสมาชิก" จากหน้า Profile (Guest)
+        Note over User,Vue: Guest data อยู่ใน localStorage
+    end
+
+    User->>Vue: กรอก email + password + confirm + first_name + last_name
     Vue->>Vue: validate (password match, length, not empty)
     Vue->>Vue: สร้าง redirectTo = `${origin}/login`
     Vue->>Supabase: signUp({ email, password, options: { emailRedirectTo, data: { first_name, last_name } } })
@@ -112,9 +160,21 @@ sequenceDiagram
     User->>Email: คลิก link ยืนยัน
     Email->>Supabase: confirm token
     Note over User,Email: Supabase redirect → /login (ตาม emailRedirectTo)
+
     User->>Vue: กลับไปหน้า Login และกรอกรหัสผ่าน
     Vue->>Supabase: signInWithPassword()
     Supabase-->>Vue: session token
+
+    Vue->>Store: ตรวจสอบ localStorage ว่ามี guest logs?
+    alt มีข้อมูล Guest
+        Vue->>LS: อ่าน guest logs ทั้งหมด
+        loop แต่ละ record
+            Vue->>DB: INSERT daily_logs (user_id, log_date, symptom)
+        end
+        Vue->>LS: ลบ guest logs + guest_id
+        Vue-->>User: toast "นำเข้าข้อมูลที่ทดลองใช้เรียบร้อย ✓"
+    end
+
     Vue-->>User: redirect /dashboard
 ```
 
@@ -124,22 +184,40 @@ sequenceDiagram
 sequenceDiagram
     actor User
     participant Vue as Vue App
+    participant LS as localStorage
     participant Supabase as Supabase DB
 
-    User->>Vue: เปิด /dashboard
-    Vue->>Supabase: SELECT log_date=today
-    alt มีข้อมูลแล้ว
-        Supabase-->>Vue: existing record
-        Vue-->>User: แสดงอาการที่เคยบันทึก (โหมดแก้ไข)
-    else ยังไม่มี
-        Supabase-->>Vue: null
-        Vue-->>User: แสดงหน้าว่าง (โหมดสร้างใหม่)
-    end
+    alt Guest Mode (no session)
+        User->>Vue: เปิด /dashboard
+        Vue->>LS: อ่าน guestLogs[guest_id] จาก localStorage
+        alt มีข้อมูล
+            LS-->>Vue: existing record
+            Vue-->>User: แสดงอาการที่เคยบันทึก (โหมดแก้ไข)
+        else ยังไม่มี
+            LS-->>Vue: null
+            Vue-->>User: แสดงหน้าว่าง (โหมดสร้างใหม่)
+        end
 
-    User->>Vue: เลือกอาการ → กดบันทึก
-    Vue->>Supabase: UPSERT (user_id, log_date, symptom)
-    Supabase-->>Vue: success
-    Vue-->>User: แสดง toast "บันทึกแล้ว ✓"
+        User->>Vue: เลือกอาการ → กดบันทึก
+        Vue->>LS: upsert ไปที่ guestLogs[guest_id][date]
+        LS-->>Vue: success
+        Vue-->>User: แสดง toast "บันทึกแล้ว ✓ (Guest)"
+    else Registered User
+        User->>Vue: เปิด /dashboard
+        Vue->>Supabase: SELECT log_date=today
+        alt มีข้อมูลแล้ว
+            Supabase-->>Vue: existing record
+            Vue-->>User: แสดงอาการที่เคยบันทึก (โหมดแก้ไข)
+        else ยังไม่มี
+            Supabase-->>Vue: null
+            Vue-->>User: แสดงหน้าว่าง (โหมดสร้างใหม่)
+        end
+
+        User->>Vue: เลือกอาการ → กดบันทึก
+        Vue->>Supabase: UPSERT (user_id, log_date, symptom)
+        Supabase-->>Vue: success
+        Vue-->>User: แสดง toast "บันทึกแล้ว ✓"
+    end
 ```
 
 ### 2.5 Export PDF Flow
@@ -204,6 +282,7 @@ flowchart LR
 - Input: Email
 - Input: Password (masked)
 - ปุ่ม "เข้าสู่ระบบ"
+- ปุ่ม "ทดลองใช้งาน" (Guest Mode) — ใช้ได้ทันทีไม่ต้องสมัคร
 - Link ไป `/register`
 - ข้อความ Error กรณี credential ผิด
 
@@ -211,6 +290,12 @@ flowchart LR
 - ใช้ Supabase Auth `signInWithPassword()`
 - เมื่อ login สำเร็จ redirect ไป `/dashboard`
 - ถ้า session ยังอยู่ให้ข้าม login ไปเลย
+- **Guest Mode:** กด "ทดลองใช้งาน" → ตั้งค่า `isGuest=true` → redirect `/dashboard`
+  - Guest mode ไม่ต้องใช้ Supabase session
+  - ข้อมูลทั้งหมดเก็บที่ `localStorage` ภายใต้ key `guestLogs`
+  - Guest ID สร้างอัตโนมัติ (`crypto.randomUUID()`) เก็บใน localStorage เพื่อคงความต่อเนื่อง
+  - Guest สามารถใช้ Dashboard, Summary, Profile ได้เหมือน user ปกติ (แต่ใช้ localStorage แทน Supabase)
+  - หน้า Profile ใน Guest mode จะมี banner "สมัครสมาชิกเพื่อบันทึกข้อมูลถาวร"
 
 ---
 
@@ -763,24 +848,25 @@ src/
 
 ## 12. Routes & Auth Guard
 
-| Path | Name | Component | Auth Required | Notes |
-|---|---|---|---|---|---|
-| `/login` | `Login` | LoginPage | ❌ | |
-| `/register` | `Register` | RegisterPage | ❌ | |
-| `/verify` | `VerifyEmail` | VerifyEmailPage | ❌ | หลังสมัคร, แสดง "กรุณาตรวจสอบอีเมล" |
-| `/` | — | — | — | redirect → `/login` |
-| `/dashboard` | `Dashboard` | DashboardPage | ✅ | |
-| `/summary` | `Summary` | SummaryPage | ✅ | |
-| `/profile` | `Profile` | ProfilePage | ✅ | |
-| `/:pathMatch(.*)*` | — | — | — | catch-all redirect → `/login` |
+| Path | Name | Component | Auth Required | Guest Allowed | Notes |
+|---|---|---|---|---|---|---|
+| `/login` | `Login` | LoginPage | ❌ | — | มีปุ่ม "ทดลองใช้งาน" |
+| `/register` | `Register` | RegisterPage | ❌ | — | ถ้ามาจาก Guest → pre-fill ไม่ได้ แต่ migration หลัง confirm |
+| `/verify` | `VerifyEmail` | VerifyEmailPage | ❌ | — | หลังสมัคร, แสดง "กรุณาตรวจสอบอีเมล" |
+| `/` | — | — | — | — | redirect → `/login` |
+| `/dashboard` | `Dashboard` | DashboardPage | ✅ | ✅ | Guest: ใช้ localStorage; Auth: ใช้ Supabase |
+| `/summary` | `Summary` | SummaryPage | ✅ | ✅ | Guest: ใช้ localStorage; Auth: ใช้ Supabase |
+| `/profile` | `Profile` | ProfilePage | ✅ | ✅ | Guest: แสดง "สมัครสมาชิก" CTA แทนข้อมูลจริง |
+| `/:pathMatch(.*)*` | — | — | — | — | catch-all redirect → `/login` |
 
 ### Auth Guard Logic (`router.beforeEach`)
 
 ```js
-if (auth.loading) return                    // ← ไม่ redirect (loading splash)
-if (to.meta.requiresAuth && !auth.session) return '/login'
+if (auth.loading) return                         // ← ไม่ redirect (loading splash)
+if (to.meta.requiresAuth && !auth.session && !auth.isGuest) return '/login'
 if (to.path === '/login' && auth.session) return '/dashboard'
 if (to.path === '/register' && auth.session) return '/dashboard'
+// Guest: อนุญาตให้เข้าถึงหน้าที่มี meta.guestAllowed หรือ meta.requiresAuth (โดยนัย)
 ```
 
 ### Init Order (สำคัญ!)
@@ -848,7 +934,303 @@ export const SYMPTOMS = [
 
 ---
 
-## 15. Out of Scope (v1)
+## 15. Guest Mode — ระบบทดลองใช้งาน (ไม่ต้องสมัครสมาชิก)
+
+**เวอร์ชัน:** v2.0.0  
+**เป้าหมาย:** ให้ผู้ใช้สามารถทดลองใช้งานแอพได้ทันทีโดยไม่ต้องกรอกข้อมูลหรือยืนยันอีเมล  
+**Key Concept:** ข้อมูลทั้งหมดใน Guest Mode เก็บไว้ที่ `localStorage` เมื่อผู้ใช้ตัดสินใจสมัคร ระบบจะย้ายข้อมูลไปยัง Supabase อัตโนมัติ
+
+---
+
+### 15.1 Auth Store Changes
+
+เพิ่ม state และ action ใน `src/stores/auth.js`:
+
+```js
+state: () => ({
+  session: null,
+  user: null,
+  loading: true,
+  isGuest: false,               // ← NEW
+  guestId: null,                // ← NEW: UUID จาก localStorage
+}),
+actions: {
+  async enterGuestMode() {
+    // สร้างหรืออ่าน guestId จาก localStorage
+    let guestId = localStorage.getItem('guest_id')
+    if (!guestId) {
+      guestId = crypto.randomUUID()
+      localStorage.setItem('guest_id', guestId)
+    }
+    this.isGuest = true
+    this.guestId = guestId
+    this.loading = false
+  },
+  async exitGuestMode() {
+    // ใช้เมื่อ login/signUp แล้ว — ล้าง guest state
+    this.isGuest = false
+    this.guestId = null
+  },
+  async migrateGuestData() {
+    // อ่าน guest logs จาก localStorage
+    const guestLogs = JSON.parse(localStorage.getItem('guestLogs') || '{}')
+    const guestId = localStorage.getItem('guest_id')
+    const userLogs = guestLogs[guestId]
+    if (!userLogs || Object.keys(userLogs).length === 0) return 0
+
+    let migrated = 0
+    for (const [date, symptom] of Object.entries(userLogs)) {
+      try {
+        await supabase.from('daily_logs').upsert(
+          { user_id: this.user.id, log_date: date, symptom },
+          { onConflict: 'user_id,log_date' }
+        )
+        migrated++
+      } catch (e) {
+        console.error('Migration failed for', date, e)
+      }
+    }
+
+    // Clear guest data
+    localStorage.removeItem('guestLogs')
+    localStorage.removeItem('guest_id')
+    return migrated
+  },
+}
+```
+
+---
+
+### 15.2 Guest Data Storage (localStorage)
+
+โครงสร้าง localStorage สำหรับ Guest Mode:
+
+| Key | Value | Description |
+|---|---|---|
+| `guest_id` | `string` (UUID) | ID ประจำเครื่อง guest สร้างครั้งแรกที่เข้า Guest Mode |
+| `guestLogs` | `JSON string` | Object { `[guestId]`: { `[YYYY-MM-DD]`: `symptomCode` } } |
+
+**ตัวอย่าง localStorage content:**
+```json
+{
+  "guest_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "guestLogs": {
+    "a1b2c3d4-e5f6-7890-abcd-ef1234567890": {
+      "2026-06-28": "NORMAL",
+      "2026-06-29": "FEVER",
+      "2026-06-30": "RUNNY_CLEAR"
+    }
+  }
+}
+```
+
+**Business Rules:**
+- Guest logs เก็บแบบ `upsert` logic: ถ้าวันที่ซ้ำ → overwrite
+- Guest logs ไม่มี future-date validation (ใช้ rule เดียวกับปกติ)
+- Guest logs ถูกลบหลังจาก migrate สำเร็จเท่านั้น
+- ถ้า localStorage ถูกล้าง (clear) → ข้อมูล Guest หาย ไม่สามารถกู้คืนได้
+- **Warning ตอนเข้า Guest Mode:** แจ้ง toast "ข้อมูลจะถูกบันทึกในเครื่องนี้เท่านั้น หากล้างข้อมูลใน browser จะสูญหาย"
+
+---
+
+### 15.3 Logs Store Changes
+
+เพิ่ม method ใหม่ใน `src/stores/logs.js` สำหรับ Guest Mode:
+
+```js
+// Guest helpers — ใช้ localStorage แทน Supabase
+function getGuestLogs() {
+  const guestId = localStorage.getItem('guest_id')
+  if (!guestId) return { guestId: null, logs: {} }
+  const all = JSON.parse(localStorage.getItem('guestLogs') || '{}')
+  return { guestId, logs: all[guestId] || {} }
+}
+
+function saveGuestLogs(logs) {
+  const guestId = localStorage.getItem('guest_id')
+  if (!guestId) return
+  const all = JSON.parse(localStorage.getItem('guestLogs') || '{}')
+  all[guestId] = logs
+  localStorage.setItem('guestLogs', JSON.stringify(all))
+}
+```
+
+เพิ่ม action `setGuestMode(bool)` เพื่อให้ Logs Store รู้ว่า mode ไหน และเปลี่ยนแหล่งข้อมูล:
+
+```js
+actions: {
+  setGuestMode(isGuest) {
+    this.isGuest = isGuest
+  },
+  async fetchForDate(date) {
+    if (this.isGuest) {
+      const { logs, guestId } = getGuestLogs()
+      this.currentLog = logs[date] ? { log_date: date, symptom: logs[date] } : null
+      return this.currentLog
+    }
+    // original Supabase logic...
+  },
+  async fetchMonth(year, month) {
+    if (this.isGuest) {
+      const { logs } = getGuestLogs()
+      const prefix = `${year}-${String(month).padStart(2, '0')}`
+      const monthMap = {}
+      Object.entries(logs).forEach(([date, symptom]) => {
+        if (date.startsWith(prefix)) monthMap[date] = symptom
+      })
+      this.monthLogs = monthMap
+      return monthMap
+    }
+    // original Supabase logic...
+  },
+  async upsertLog(date, symptom) {
+    if (this.isGuest) {
+      const { logs, guestId } = getGuestLogs()
+      logs[date] = symptom
+      saveGuestLogs(logs)
+      this.currentLog = { log_date: date, symptom }
+      return
+    }
+    // original Supabase logic...
+  },
+}
+```
+
+---
+
+### 15.4 Router Guard Changes
+
+```js
+// src/router/index.js
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+  if (auth.loading) return
+  // Guest: allow access to routes that normally require auth
+  if (to.meta.requiresAuth && !auth.session && !auth.isGuest) return '/login'
+  if ((to.path === '/login' || to.path === '/register') && auth.session) return '/dashboard'
+})
+```
+
+---
+
+### 15.5 UI Changes
+
+#### 15.5.1 LoginPage.vue — เพิ่มปุ่ม "ทดลองใช้งาน"
+
+เพิ่มปุ่มใหม่ระหว่าง form และ footer link:
+
+```html
+<hr class="auth-divider" />
+<button type="button" class="btn btn--ghost" @click="enterGuestMode">
+  🚀 ทดลองใช้งาน
+</button>
+<p class="auth-guest-note">ไม่ต้องสมัครสมาชิก ข้อมูลถูกบันทึกในเครื่อง</p>
+```
+
+Style:
+- `btn--ghost`: ไม่มีพื้นหลัง, border เทา, hover มีพื้นหลังจางๆ
+- Divider: `border-top` บางๆ คั่นระหว่าง form ปกติกับ Guest button
+
+#### 15.5.2 Guest Banner — แสดงในทุก protected page
+
+Component `GuestBanner.vue` (หรือ inline ในแต่ละ page):
+
+```html
+<div v-if="auth.isGuest" class="guest-banner" role="alert">
+  <span>🔒 คุณกำลังใช้โหมดทดลอง</span>
+  <span>ข้อมูลถูกบันทึกในเครื่องนี้เท่านั้น</span>
+  <router-link to="/register" class="guest-banner__cta">สมัครสมาชิกเพื่อบันทึกถาวร</router-link>
+</div>
+```
+
+แสดงใน: DashboardPage, SummaryPage, ProfilePage (เหนือ content หลัก)
+
+#### 15.5.3 ProfilePage.vue — Guest Mode
+
+เมื่อ `auth.isGuest === true`:
+- ไม่แสดง profile card header (avatar, name, email)
+- ไม่แสดง child info fields
+- แสดง upgrade prompt card แทน:
+
+```html
+<section class="upgrade-card">
+  <div class="upgrade-card__icon" aria-hidden="true">🔒</div>
+  <h2 class="upgrade-card__title">บันทึกข้อมูลของคุณให้ถาวร</h2>
+  <p class="upgrade-card__desc">
+    คุณมีข้อมูล {{ guestLogCount }} รายการที่บันทึกไว้
+    สมัครสมาชิกเพื่อไม่ให้ข้อมูลสูญหาย
+  </p>
+  <router-link to="/register" class="btn btn--primary upgrade-card__cta">
+    สมัครสมาชิก (คงข้อมูลเดิม)
+  </router-link>
+  <button type="button" class="btn btn--secondary" @click="handleLogin">
+    เข้าสู่ระบบ (ถ้ามีบัญชีอยู่แล้ว)
+  </button>
+</section>
+```
+
+- แสดง `guestLogCount` = จำนวนวันที่บันทึก (จาก localStorage)
+- ปุ่ม "สมัครสมาชิก" → ไป `/register` (หลัง register + confirm + login → migrate อัตโนมัติ)
+- ปุ่ม "เข้าสู่ระบบ" → ไป `/login`
+
+#### 15.5.4 DashboardPage.vue — Guest Mode
+
+- Header greeting: `"สวัสดี ผู้ใช้ทดลอง 👋"` (ไม่ต้องแสดงชื่อลูก/ผู้ปกครอง)
+- Avatar link → ซ่อนหรือเปลี่ยนเป็น icon เฉยๆ
+- หลัง symptom card มีข้อความ `"💾 บันทึกในเครื่อง"` เล็กๆ
+- Guest banner (ตาม 15.5.2)
+
+#### 15.5.5 SummaryPage.vue — Guest Mode
+
+- ใช้ localStorage data แทน Supabase fetch
+- Guest banner (ตาม 15.5.2)
+- Export PDF ใช้ได้เหมือนเดิม (jsPDF + html2canvas ไม่พึ่ง auth)
+
+---
+
+### 15.6 Data Migration Flow (Guest → Registered)
+
+**Trigger:** เมื่อ user ที่มี `isGuest=true` และมี guest logs อยู่ ทำการ:
+1. สมัครสมาชิก (RegisterPage) → ยืนยัน email → login
+2. Login สำเร็จ → `auth.onAuthStateChange` fires → ตรวจ `auth.isGuest`
+3. ถ้า isGuest → เรียก `auth.migrateGuestData()`
+4. หลังจาก migrate สำเร็จ → `auth.exitGuestMode()`, `logs.setGuestMode(false)`
+5. Toast success: "นำเข้าข้อมูลที่ทดลองใช้เรียบร้อย ✓ (X รายการ)"
+6. Redirect `/dashboard`
+
+**Fallback:** ถ้า migrate ล้มเหลวบาง record → log error, continue ไปต่อ
+ไม่ delete guest data จนกว่าจะ migrate ครบ (safe rollback)
+
+---
+
+### 15.7 States & Edge Cases
+
+| State | Behavior |
+|---|---|
+| Guest มีข้อมูล → สมัครสมาชิก → migrate สำเร็จ | Toast + redirect, guest data ถูกลบ |
+| Guest มีข้อมูล → ล้าง browser (clear data) | ข้อมูลหาย, ถ้า login หลัง clear → ไม่มี data ให้ migrate |
+| Guest ไม่มีข้อมูล → สมัครสมาชิก | migrate 0 records, redirect ปกติ |
+| Guest → Login (มีบัญชี) | ไม่ migrate (ไม่ได้สมัครใหม่, logout guest ถ้ามี) |
+| Registered → Logout → Guest Mode | Logout กลับไป `/login` → กด Guest → session ปกติใน localStorage |
+| Guest → Dashboard → ปิดแอพ → เปิดใหม่ | localStorage ยังมี guest_id + logs → โหลดกลับมา |
+| Guest → กดสมัคร → ยังไม่ confirm → กลับมาใช้ Guest | ยังใช้ Guest ต่อได้, migration รอหลัง confirm |
+| iOS PWA Guest Mode | localStorage ยังใช้ได้ใน PWA standalone mode |
+
+---
+
+### 15.8 Risks & Mitigations
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| localStorage ถูกล้าง (user clear data / browser cleanup) | Guest data สูญหาย | แจ้ง warning ตอนเข้า Guest Mode; recommend สมัครสมาชิก |
+| localStorage quota (5MB ใน browser ทั่วไป) | Guest มีข้อมูลมาก → Full | 1 record ~100 bytes → 5MB = ~50,000 records → เพียงพอ |
+| Concurrent access (ใช้ browser เดียว 2 tab) | Data race ตอน save | localStorage เป็น synchronous → safe; migration ควรป้องกัน double-migrate |
+| Guest migrate ซ้ำ (migrate → logout → migrate อีก) | Duplicate rows ใน daily_logs | upsert with `onConflict: user_id,log_date` ป้องกัน duplicate |
+| localStorage ไม่พร้อมใช้งาน (Safari private mode) | Guest mode ใช้ไม่ได้ | fallback: แจ้งว่า browser นี้ไม่รองรับ Guest Mode |
+
+---
+
+## 16. Out of Scope (v1)
 
 - ❌ รองรับหลายโปรไฟล์เด็ก
 - ❌ Push notification

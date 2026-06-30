@@ -369,6 +369,34 @@ icons: [
 
 ---
 
+## 🎯 Milestone 17 — QA: Guest Mode Tests (v2.0.0)
+
+**Est:** 0.5 day
+
+### Test Matrix
+
+- [ ] **G1** กด "ทดลองใช้งาน" → เข้า Dashboard ทันที, ไม่ต้องกรอกข้อมูล
+- [ ] **G2** Guest Dashboard: เลือกวันที่ + บันทึกอาการ → toast "บันทึกอาการแล้ว (บันทึกในเครื่อง)"
+- [ ] **G3** Guest Dashboard: เปลี่ยนวันที่ → reload → ข้อมูลเดิมยังอยู่
+- [ ] **G4** Guest Summary: แสดงปฏิทินสีจาก localStorage data → counts ถูกต้อง
+- [ ] **G5** Guest Summary: Export PDF → ดาวน์โหลดได้, เนื้อหาครบถ้วน
+- [ ] **G6** Guest Profile: แสดง upgrade prompt + จำนวนวันที่บันทึกถูกต้อง
+- [ ] **G7** Guest Profile: กด "สมัครสมาชิก (คงข้อมูลเดิม)" → ไป `/register`
+- [ ] **G8** Guest Profile: กด "เข้าสู่ระบบ (ถ้ามีบัญชีอยู่แล้ว)" → ไป `/login`
+- [ ] **G9** Guest → สมัครสมาชิก → ยืนยัน email → login → ข้อมูล migrate ไป Supabase
+- [ ] **G10** หลัง migrate → เปิด Dashboard → ข้อมูลเดิมแสดง (จาก Supabase)
+- [ ] **G11** หลัง migrate → localStorage ไม่มี `guestLogs` และ `guest_id`
+- [ ] **G12** Guest → Login (มีบัญชี) → ไม่ migrate (ไม่มี guest data)
+- [ ] **G13** Guest Banner แสดงในทุก protected page (Dashboard, Summary, Profile)
+- [ ] **G14** Guest → สมัคร → ยังไม่ confirm email → กลับมาใช้ Guest ต่อได้
+- [ ] **G15** เปิดแอพใน Safari Private Mode → Guest Mode แจ้ง error (localStorage ปิด)
+- [ ] **G16** Guest → clear browser data → ข้อมูลหาย → เปิดใหม่ → เข้า Guest ใหม่ได้
+- [ ] **G17** Guest → logout (ออกจาก Guest) → กลับ `/login` → กด Guest อีกครั้ง → ข้อมูลเดิม (ถ้ายังไม่ clear)
+- [ ] **G18** Future date validation ยังทำงานใน Guest Mode
+- [ ] **G19** iOS Safari / PWA: Guest Mode ทำงาน (localStorage มีใน PWA)
+
+---
+
 ## 🔗 Quick Reference
 
 | Command | Description |
@@ -489,6 +517,92 @@ icons: [
 - [x] **M13.2** แก้ `stores/profile.js` line 62: `file.name ? file.name.split('.').pop() : 'jpg'`
 - [x] **M13.3** ทดสอบ: รูป <700KB → `File.name` มีค่า → ใช้ `.name.split` ปกติ; รูป >700KB → `file.name` เป็น undefined → fallback `'jpg'`
 - [x] **M13.4** Bump version 1.4.1, อัปเดต docs
+
+---
+
+## 🎯 Milestone 17 — Guest Mode (v2.0.0)
+
+**Est:** 2.0 days
+
+### 17.1 Auth Store — Guest State & Actions
+
+- [ ] **M17.1.1** เพิ่ม state `isGuest` (bool), `guestId` (string|null) ใน `src/stores/auth.js`
+- [ ] **M17.1.2** เพิ่ม action `enterGuestMode()`:
+  - อ่าน/สร้าง `guest_id` จาก localStorage (`crypto.randomUUID()`)
+  - set `isGuest=true`, `guestId=guid`
+  - เรียก `logs.setGuestMode(true)`
+- [ ] **M17.1.3** เพิ่ม action `exitGuestMode()`:
+  - set `isGuest=false`, `guestId=null`
+  - เรียก `logs.setGuestMode(false)`
+- [ ] **M17.1.4** เพิ่ม action `migrateGuestData()`:
+  - อ่าน guest logs จาก localStorage
+  - upsert ทีละ record ไป `daily_logs` ด้วย `auth.user.id`
+  - ลบ localStorage guest data หลัง migrate สำเร็จ
+  - return `{ migratedCount, errors }`
+
+### 17.2 Router — อนุญาต Guest
+
+- [ ] **M17.2.1** แก้ `router.beforeEach`:
+  ```js
+  if (to.meta.requiresAuth && !auth.session && !auth.isGuest) return '/login'
+  ```
+
+### 17.3 Logs Store — localStorage Backend
+
+- [ ] **M17.3.1** เพิ่ม helper functions: `getGuestLogs()`, `saveGuestLogs()`
+- [ ] **M17.3.2** แก้ `fetchForDate()`: ถ้า `isGuest` → อ่านจาก localStorage
+- [ ] **M17.3.3** แก้ `fetchMonth()`: ถ้า `isGuest` → filter เดือนจาก localStorage
+- [ ] **M17.3.4** แก้ `upsertLog()`: ถ้า `isGuest` → upsert ไป localStorage (ยัง validate future-date)
+
+### 17.4 UI — LoginPage
+
+- [ ] **M17.4.1** เพิ่ม `<hr>` divider + ปุ่ม "🚀 ทดลองใช้งาน" (type="button")
+- [ ] **M17.4.2** `@click` → `auth.enterGuestMode()` → `router.push('/dashboard')`
+- [ ] **M17.4.3** เพิ่มข้อความใต้ปุ่ม: "ไม่ต้องสมัครสมาชิก ข้อมูลถูกบันทึกในเครื่อง"
+- [ ] **M17.4.4** style `.btn--ghost` สำหรับปุ่ม Guest Mode
+
+### 17.5 UI — GuestBanner Component
+
+- [ ] **M17.5.1** สร้าง `src/components/GuestBanner.vue`:
+  - แถบสีเหลืองอ่อน (amber)
+  - icon 🔒 + "โหมดทดลอง" + "ข้อมูลถูกบันทึกในเครื่องนี้เท่านั้น"
+  - Link "สมัครเพื่อบันทึกถาวร" → `/register`
+  - `v-if="auth.isGuest"`
+- [ ] **M17.5.2** เพิ่ม GuestBanner ใน DashboardPage, SummaryPage, ProfilePage
+
+### 17.6 UI — DashboardPage Guest Mode
+
+- [ ] **M17.6.1** greeting: ถ้า `isGuest` → "สวัสดี ผู้ใช้ทดลอง 👋"
+- [ ] **M17.6.2** avatar link: ซ่อนหรือใช้ fallback icon เมื่อ Guest
+- [ ] **M17.6.3** Toast หลังบันทึก: "บันทึกอาการแล้ว (บันทึกในเครื่อง)"
+
+### 17.7 UI — ProfilePage Guest Mode (Upgrade Prompt)
+
+- [ ] **M17.7.1** ถ้า `isGuest`: ซ่อน profile card, child info, logout
+- [ ] **M17.7.2** แสดง upgrade card:
+  - icon 🔒 + "บันทึกข้อมูลของคุณให้ถาวร"
+  - จำนวนวันที่บันทึก (จาก localStorage)
+  - ปุ่ม "สมัครสมาชิก (คงข้อมูลเดิม)" → `/register`
+  - ปุ่ม "เข้าสู่ระบบ (ถ้ามีบัญชีอยู่แล้ว)" → `/login`
+
+### 17.8 UI — SummaryPage Guest Mode
+
+- [ ] **M17.8.1** ใช้ localStorage data (ผ่าน logs store ที่ถูกแก้แล้ว)
+- [ ] **M17.8.2** Export PDF ใช้ได้เหมือนเดิม
+
+### 17.9 Data Migration Flow
+
+- [ ] **M17.9.1** Trigger: `auth.onAuthStateChange` detect session change → migrate
+- [ ] **M17.9.2** อ่าน guest logs → upsert ทั้งหมด → `exitGuestMode()` → clear localStorage
+- [ ] **M17.9.3** Toast success: "นำเข้าข้อมูลที่ทดลองใช้เรียบร้อย ✓ (X รายการ)"
+- [ ] **M17.9.4** Safe rollback: ลบ guest data หลังจาก upsert สำเร็จเท่านั้น
+- [ ] **M17.9.5** ป้องกัน double migrate: ตรวจสอบ `guestLogs` ก่อน
+
+### 17.10 Guest Warning Toast
+
+- [ ] **M17.10.1** ใน `auth.enterGuestMode()`: toast info
+  - "🔒 ข้อมูลจะถูกบันทึกในเครื่องนี้เท่านั้น หากล้างข้อมูลใน browser จะสูญหาย"
+- [ ] **M17.10.2** ป้องกัน toast ซ้ำ (เช็คว่าเพิ่งเข้า Guest Mode หรือไม่)
 
 ---
 

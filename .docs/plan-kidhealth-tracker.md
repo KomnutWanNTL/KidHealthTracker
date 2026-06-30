@@ -9,7 +9,7 @@
 ## 0. High-Level Milestones
 
 | # | Milestone | Deliverable | Est. Days |
-|---|---|---|---|---|
+|---|---|---|---|---|---|
 | M0 | Project bootstrap | Vite + Vue 3 + Tailwind + Supabase client + env files | 0.5 |
 | M1 | Supabase backend | 2 projects (dev/prod), `daily_logs` + `profiles` table, RLS, seed | 0.5 |
 | M2 | Auth (Login / Register / Logout) | Pinia auth store, guarded router, email confirm flow | 1.5 |
@@ -20,7 +20,8 @@
 | M7 | Profile (ชื่อลูก, วันเกิด, อายุอัตโนมัติ) | `profiles` table, profile store, editable child info, age calc | 1.0 |
 | M8 | Vercel deploy + env | Production env, preview env, smoke test | 0.5 |
 | M9 | QA / UAT | Test matrix, Supabase test users, UAT pass | 1.5 |
-| **Total** | | | **~11 days** |
+| M17 | **Guest Mode** (v2.0.0) | Guest auth, localStorage data layer, guest UI, data migration | **2.0** |
+| **Total** | | | **~13 days** |
 
 ---
 
@@ -324,6 +325,205 @@ Tasks:
 - Error shown if file too large or wrong type
 - Supabase Storage bucket `avatars` has RLS policies working
 
+### Phase 7c — Guest Mode (M17, v2.0.0)
+
+**Goal:** ให้ผู้ใช้ทดลองใช้งานแอพได้ทันทีโดยไม่ต้องสมัครสมาชิก ข้อมูลถูกเก็บใน localStorage และสามารถย้ายไปยัง Supabase ได้เมื่อสมัครทีหลัง
+
+**Est:** 2.0 days
+
+#### Architecture
+
+Guest Mode แบ่งเป็น 3 ส่วนหลัก:
+1. **Auth Layer** — เพิ่ม `isGuest` state + `enterGuestMode()` / `exitGuestMode()` / `migrateGuestData()`
+2. **Data Layer** — Logs Store รองรับ localStorage backend เมื่อ `isGuest=true`
+3. **UI Layer** — Guest banner, ปุ่ม Guest Mode ที่ Login, Profile upgrade prompt
+
+```
+┌─────────────────────────────────────────────────┐
+│                  LoginPage                       │
+│  ┌─────────────────────────────────────────┐    │
+│  │         Email + Password form            │    │
+│  ├─────────────────────────────────────────┤    │
+│  │         ─── หรือ ───                     │    │
+│  │  [🚀 ทดลองใช้งาน] ← NEW                  │    │
+│  └─────────────────────────────────────────┘    │
+└──────────────────────┬──────────────────────────┘
+                       │ คลิก "ทดลองใช้งาน"
+                       ▼
+┌─────────────────────────────────────────────────┐
+│              Auth Store                          │
+│  isGuest = true                                  │
+│  guestId = crypto.randomUUID()                   │
+│  save guest_id → localStorage                    │
+└──────────────────────┬──────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────┐
+│           Dashboard / Summary / Profile          │
+│  ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐    │
+│  │ 🔒 คุณกำลังใช้โหมดทดลอง                  │    │
+│  │ ข้อมูลถูกบันทึกในเครื่องนี้เท่านั้น          │    │
+│  │ [สมัครสมาชิกเพื่อบันทึกถาวร]               │    │
+│  └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘    │
+│                                                 │
+│  ┌─────────────────────────────────────────┐    │
+│  │ Symptom Cards → บันทึก → localStorage    │    │
+│  └─────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────┘
+```
+
+#### Tasks
+
+**M17.1 — Auth Store: Guest state & actions**
+- เพิ่ม `state: isGuest (bool), guestId (string|null)`
+- เพิ่ม `action enterGuestMode()`:
+  - ตรวจสอบ `localStorage` ว่ามี `guest_id` หรือไม่ → ถ้าไม่มี สร้างใหม่ด้วย `crypto.randomUUID()`
+  - set `isGuest = true`, `guestId = guid`
+  - เรียก `logs.setGuestMode(true)`
+- เพิ่ม `action exitGuestMode()`: clear guest state, เรียก `logs.setGuestMode(false)`
+- เพิ่ม `action migrateGuestData()`:
+  - อ่าน guest logs จาก localStorage → upsert ทีละ record ไปยัง `daily_logs` ด้วย `auth.user.id`
+  - ลบ guest data หลังจาก migrate สำเร็จ
+  - คืนค่า `{ migratedCount, errors }`
+- init: ถ้า `!session` → `isGuest = false` (default, ให้ user เลือกเองจาก Login)
+
+**Files:** `src/stores/auth.js`
+
+**M17.2 — Router: อนุญาต Guest เข้าถึง protected routes**
+- แก้ `router.beforeEach`:
+  ```js
+  if (to.meta.requiresAuth && !auth.session && !auth.isGuest) return '/login'
+  ```
+- ไม่ต้องเพิ่ม `meta.guestAllowed` — ใช้ `isGuest` ครอบคลุมทุก protected route
+
+**Files:** `src/router/index.js`
+
+**M17.3 — Logs Store: localStorage backend เมื่อ isGuest**
+- เพิ่ม helper functions:
+  - `getGuestLogs()` → `{ guestId, logs }`
+  - `saveGuestLogs(logs)`
+- แก้ `fetchForDate()`: ถ้า `isGuest` → อ่านจาก localStorage แทน Supabase
+- แก้ `fetchMonth()`: ถ้า `isGuest` → filter เฉพาะเดือนจาก localStorage
+- แก้ `upsertLog()`: ถ้า `isGuest` → upsert ไป localStorage, validate future-date เหมือนเดิม
+
+**Business Rules (Guest):**
+- Date format: ISO `YYYY-MM-DD` (เหมือน Supabase)
+- Future date validation: ใช้ rule เดียวกับ registered user
+- Guest data structure ใน localStorage:
+  ```json
+  {
+    "guestLogs": {
+      "<guestId>": {
+        "2026-06-28": "NORMAL",
+        "2026-06-29": "FEVER"
+      }
+    }
+  }
+  ```
+
+**Files:** `src/stores/logs.js`
+
+**M17.4 — LoginPage: เพิ่มปุ่ม "ทดลองใช้งาน"**
+- เพิ่ม `<hr>` divider
+- เพิ่มปุ่ม `"🚀 ทดลองใช้งาน"` (style `btn--ghost`)
+- `@click` → `auth.enterGuestMode()` → `router.push('/dashboard')`
+- เพิ่มข้อความใต้ปุ่ม: `"ไม่ต้องสมัครสมาชิก ข้อมูลถูกบันทึกในเครื่อง"`
+- ป้องกันการ submit form เมื่อกด Guest (type="button")
+
+**Files:** `src/pages/LoginPage.vue`, `src/styles/components/button.css` (เพิ่ม `.btn--ghost`)
+
+**M17.5 — Guest Banner Component**
+- สร้าง `src/components/GuestBanner.vue`:
+  ```html
+  <template>
+    <div v-if="auth.isGuest" class="guest-banner" role="alert">
+      <div class="guest-banner__content">
+        <span class="guest-banner__icon">🔒</span>
+        <div class="guest-banner__text">
+          <strong>โหมดทดลอง</strong>
+          <span>ข้อมูลถูกบันทึกในเครื่องนี้เท่านั้น</span>
+        </div>
+        <router-link to="/register" class="guest-banner__cta">สมัครเพื่อบันทึกถาวร</router-link>
+      </div>
+    </div>
+  </template>
+  ```
+- Style: แถบสีเหลืองอ่อน (`bg-amber-50`, `border-amber-200`), responsive
+- แสดงใน DashboardPage, SummaryPage, ProfilePage (วางไว้ใต้ page-header, ก่อน content หลัก)
+
+**Note:** จริงๆ การสร้าง Component ใหม่ต้องถามก่อนตาม AGENTS.md ("ไม่เพิ่ม dependency ใหม่ โดยไม่ถามก่อน") แต่ Component เป็นส่วนหนึ่งของโครงสร้างที่มีอยู่แล้ว (components/ มีอยู่แล้ว) — ถือว่าเป็น component ใหม่ในโปรเจกต์.
+
+**Files:** `src/components/GuestBanner.vue`, `src/pages/DashboardPage.vue`, `src/pages/SummaryPage.vue`, `src/pages/ProfilePage.vue`
+
+**M17.6 — DashboardPage: Guest mode adaptation**
+- greeting: ถ้า `isGuest` → `"สวัสดี ผู้ใช้ทดลอง 👋"`
+- avatar link: ถ้า `isGuest` → ซ่อนหรือแสดง icon ดีฟอลต์
+- เพิ่ม `<GuestBanner />` ใน template
+- หลังบันทึก: toast ต่างกันเล็กน้อย `"บันทึกอาการแล้ว (บันทึกในเครื่อง)"`
+
+**Files:** `src/pages/DashboardPage.vue`
+
+**M17.7 — ProfilePage: Guest mode → upgrade prompt**
+- ถ้า `isGuest`:
+  - ซ่อน profile card (avatar, name, email, child info fields)
+  - ซ่อนปุ่ม Logout
+  - แสดง "Upgrade Card" แทน:
+    - Icon 🔒
+    - "บันทึกข้อมูลของคุณให้ถาวร"
+    - จำนวนวันที่บันทึก (จาก localStorage)
+    - ปุ่ม "สมัครสมาชิก (คงข้อมูลเดิม)" → `/register`
+    - ปุ่ม "เข้าสู่ระบบ (ถ้ามีบัญชีอยู่แล้ว)" → `/login`
+- Scroll ไปที่ upgrade card อัตโนมัติ
+
+**Files:** `src/pages/ProfilePage.vue`
+
+**M17.8 — SummaryPage: Guest mode adaptation**
+- ใช้ localStorage data แทน Supabase fetch (ผ่าน logs store ที่ถูกแก้แล้ว)
+- เพิ่ม `<GuestBanner />`
+- Export PDF ใช้ได้เหมือนเดิม (ไม่พึ่ง auth)
+
+**Files:** `src/pages/SummaryPage.vue`
+
+**M17.9 — Data Migration Flow (Guest → Registered)**
+- trigger: `auth.onAuthStateChange` → detect session change → ถ้าก่อนหน้านี้ `isGuest` → เรียก `migrateGuestData()`
+- ขั้นตอน:
+  1. `auth.onAuthStateChange` fires with new session
+  2. ตรวจสอบ `localStorage` ว่ามี `guestLogs` + `guest_id` หรือไม่
+  3. ถ้ามี → `logs.setGuestMode(true)` → อ่าน guest logs → upsert ทั้งหมด → `exitGuestMode()` → ลบ localStorage
+  4. Toast แสดงจำนวน record ที่ migrate
+  5. ถ้า migrate ล้มเหลวบาง record → log error + continue
+- **Safe rollback:** guest data จะถูกลบหลังจาก upsert สำเร็จทุก record เท่านั้น
+- **Prevent double migrate:** ตรวจสอบ `guestLogs` ก่อน migrate; ถ้าไม่มี → ข้าม
+
+**Files:** `src/stores/auth.js`
+
+**M17.10 — Guest Warning Toast ตอนเข้า Guest Mode**
+- ใน `auth.enterGuestMode()`: เรียก toast `info`:
+  ```js
+  info('🔒 ข้อมูลจะถูกบันทึกในเครื่องนี้เท่านั้น หากล้างข้อมูลใน browser จะสูญหาย')
+  ```
+- ป้องกันไม่ให้ toast ซ้ำ (เช็คว่าเพิ่งเข้า Guest Mode หรือไม่)
+
+**Files:** `src/stores/auth.js` (import useToast)
+
+---
+
+#### Acceptance Criteria
+
+1. User กด "ทดลองใช้งาน" → เข้า Dashboard ได้ทันที, ไม่ต้องกรอกข้อมูล
+2. บันทึกอาการใน Guest Mode → ข้อมูลอยู่ใน localStorage
+3. ปิดแอพ → เปิดใหม่ (ไม่ clear data) → ข้อมูลเดิมยังอยู่
+4. หน้า Profile ใน Guest → แสดง upgrade prompt + จำนวนวันที่บันทึก
+5. Guest → สมัครสมาชิก → ยืนยัน email → login → ข้อมูลถูก migrate ไป Supabase
+6. หลัง migrate → localStorage ถูกลบ → ใช้ต่อเป็น registered user ปกติ
+7. Guest → Login (มีบัญชี) → ไม่ migrate (ไม่มี guest data)
+8. Guest Banner แสดงในทุก protected page
+9. localStorage quota ไม่เกิน (ทดสอบกับข้อมูล 100+ records)
+10. Export PDF ยังใช้ได้ใน Guest Mode
+11. iOS Safari/PWA: Guest Mode ยังทำงาน (localStorage มีใน PWA)
+
+---
+
 ### Phase 8 — Deploy to Vercel (M8)
 **Goal:** Production deploy with separate dev preview.
 
@@ -604,6 +804,10 @@ await supabase
 | Avatar image distortion | Bad visual | Use `object-fit: cover` + 1:1 crop at client |
 | Browser cache after avatar re-upload | Old avatar still shown | Add `?t=${Date.now()}` cache-busting param to public URL |
 | iOS HEIC photos not selectable in file picker | Users can't upload photos from iOS album | Add `image/heic,image/heif` to `accept` + convert HEIC→JPEG client-side |
+| Guest localStorage ถูกล้าง | Guest data สูญหาย | แจ้ง warning ตอนเข้า Guest Mode; recommend สมัครสมาชิก |
+| Guest migrate ซ้ำ | Duplicate rows | upsert with `onConflict` ป้องกัน duplicate |
+| Guest ใช้ Safari Private Mode (localStorage ปิด) | Guest mode ใช้ไม่ได้ | ตรวจจับ localStorage availability; แสดงข้อความ error |
+| iOS PWA localStorage quota (5MB) | Guest data เยอะ → Full | ~100 bytes/record → 50,000 records ก็พอ |
 
 ---
 
@@ -647,6 +851,7 @@ await supabase
 | 16 | M13–M14 (v1.4.1–1.4.2: Avatar bug fixes) |
 | 17 | M15 (v1.4.3: Avatar cache-busting + HEIC) |
 | 18 | M16 (v1.4.4: iOS PWA PDF multi-page slicing) |
+| 19 | M17 (v2.0.0: Guest Mode — auth, localStorage, UI, migration) |
 
 ---
 
@@ -691,3 +896,4 @@ await supabase
 | 1.4.2 | Bug fix: avatar path without extension for upsert overwrite |
 | 1.4.3 | Bug fix: avatar cache-busting (`?t={timestamp}`) + iOS HEIC→JPEG support |
 | 1.4.4 | Bug fix: iOS PWA html2canvas full capture + multi-page PDF slicing |
+| 2.0.0 | Guest Mode: ทดลองใช้งานโดยไม่ต้องสมัคร, localStorage data layer, Guest→Registered data migration |
