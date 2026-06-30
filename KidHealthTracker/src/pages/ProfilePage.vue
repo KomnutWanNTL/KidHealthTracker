@@ -596,6 +596,12 @@ async function handleFileChange(event) {
   margin-top: var(--space-2);
 }
 
+hr {
+  border: none;
+  border-top: 1px solid var(--color-border-subtle);
+  margin: var(--space-4) 0;
+}
+
 .profile-logout {
   margin-top: var(--space-3);
 }
