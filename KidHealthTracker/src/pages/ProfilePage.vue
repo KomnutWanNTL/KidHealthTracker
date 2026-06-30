@@ -18,6 +18,7 @@ const { success, error: showError } = useToast()
 const loggingOut = ref(false)
 const saving = ref(false)
 const totalLogs = ref(0)
+const streak = ref(0)
 const childName = ref('')
 const childBirthday = ref('')
 const childGender = ref('')
@@ -84,6 +85,7 @@ onMounted(async () => {
   const m = now.getMonth() + 1
   await logs.fetchMonth(y, m)
   totalLogs.value = Object.keys(logs.monthLogs).length
+  streak.value = await logs.getStreak()
   const profile = await profileStore.fetchProfile()
   if (profile) {
     firstName.value = profile.first_name || ''
@@ -213,7 +215,7 @@ async function handleFileChange(event) {
             <span v-else class="avatar-fallback" aria-hidden="true">{{ avatarFallback }}</span>
             <div class="avatar-overlay">
               <span v-if="uploading" class="avatar-overlay__text">กำลังอัปโหลด...</span>
-              <span v-else class="avatar-overlay__text">เปลี่ยน</span>
+              <span v-else class="avatar-overlay__icon">✏️</span>
             </div>
             <div v-if="uploading" class="avatar-spinner"></div>
           </div>
@@ -224,60 +226,66 @@ async function handleFileChange(event) {
           </div>
         </div>
 
-        <div class="profile-card__body">
-          <div class="profile-row">
-            <span class="profile-row__icon" aria-hidden="true">👶</span>
-            <label for="child-name" class="profile-row__label">ชื่อลูก</label>
+        <div class="child-info-card">
+          <div class="child-info-row">
+            <span class="child-info-row__icon" aria-hidden="true">👶</span>
+            <label for="child-name" class="child-info-row__label">ชื่อเล่น</label>
             <input
               id="child-name"
               v-model="childName"
               type="text"
-              class="input profile-row__input"
-              placeholder="ชื่อลูกของคุณ"
+              class="input child-info-row__input"
+              placeholder="ชื่อเล่นลูก"
             />
           </div>
 
-          <div class="profile-row">
-            <span class="profile-row__icon" aria-hidden="true">🎂</span>
-            <label for="child-birthday" class="profile-row__label">วันเกิดลูก</label>
-            <input
-              id="child-birthday"
-              v-model="childBirthday"
-              type="date"
-              :max="new Date().toISOString().split('T')[0]"
-              class="input profile-row__input profile-row__input--date"
-            />
-          </div>
-
-          <div class="profile-row">
-            <span class="profile-row__icon" aria-hidden="true">⚤</span>
-            <label for="child-gender" class="profile-row__label">เพศลูก</label>
-            <div class="profile-row__gender">
-              <button
-                type="button"
-                class="gender-btn"
-                :class="{ 'gender-btn--active': childGender === 'male' }"
-                @click="childGender = 'male'"
-              >👦 ชาย</button>
-              <button
-                type="button"
-                class="gender-btn"
-                :class="{ 'gender-btn--active': childGender === 'female' }"
-                @click="childGender = 'female'"
-              >👧 หญิง</button>
+          <div class="child-info-row">
+            <span class="child-info-row__icon" aria-hidden="true">🎂</span>
+            <label for="child-birthday" class="child-info-row__label">วันเกิด</label>
+            <div class="child-info-row__right">
+              <input
+                id="child-birthday"
+                v-model="childBirthday"
+                type="date"
+                :max="new Date().toISOString().split('T')[0]"
+                class="input child-info-row__input"
+              />
+              <span v-if="ageText" class="child-info-row__age">{{ ageText }}</span>
             </div>
           </div>
 
-          <div v-if="ageText" class="profile-row profile-row--age">
-            <span class="profile-row__icon" aria-hidden="true">📅</span>
-            <span class="profile-row__label">อายุ</span>
-            <span class="profile-row__value">{{ ageText }}</span>
+          <div class="child-info-row child-info-row--last">
+            <span class="child-info-row__icon" aria-hidden="true">⚤</span>
+            <label id="child-gender-label" class="child-info-row__label">เพศ</label>
+            <div class="child-info-row__gender" role="radiogroup" aria-labelledby="child-gender-label">
+              <button
+                type="button"
+                role="radio"
+                :aria-checked="childGender === 'female'"
+                class="gender-pill"
+                :class="{ 'gender-pill--active': childGender === 'female' }"
+                @click="childGender = 'female'"
+              >👧 หญิง</button>
+              <button
+                type="button"
+                role="radio"
+                :aria-checked="childGender === 'male'"
+                class="gender-pill"
+                :class="{ 'gender-pill--active': childGender === 'male' }"
+                @click="childGender = 'male'"
+              >👦 ชาย</button>
+            </div>
           </div>
+        </div>
 
-          <div class="profile-row">
-            <span class="profile-row__icon" aria-hidden="true">📊</span>
-            <span class="profile-row__label">บันทึกเดือนนี้</span>
-            <span class="profile-row__value">{{ totalLogs }} วัน</span>
+        <div class="stats-section">
+          <div class="stats-card stats-card--green">
+            <div class="stats-card__label">📊 บันทึกเดือนนี้</div>
+            <div class="stats-card__value">{{ totalLogs }}<span class="stats-card__unit"> วัน</span></div>
+          </div>
+          <div class="stats-card stats-card--blue">
+            <div class="stats-card__label">🔥 ติดต่อกัน</div>
+            <div class="stats-card__value">{{ streak }}<span class="stats-card__unit"> วัน</span></div>
           </div>
         </div>
       </section>
@@ -291,12 +299,14 @@ async function handleFileChange(event) {
         {{ saving ? 'กำลังบันทึก...' : 'บันทึก' }}
       </button>
 
+      <hr>
+
       <div class="profile-logout">
         <button
           type="button"
           @click="handleLogout"
           :disabled="loggingOut"
-          class="btn btn--danger"
+          class="btn btn--danger-outlined"
         >
           {{ loggingOut ? 'กำลังออกจากระบบ...' : 'ออกจากระบบ' }}
         </button>
@@ -339,14 +349,14 @@ async function handleFileChange(event) {
 }
 
 .profile-avatar-wrap {
-  width: 80px;
-  height: 80px;
+  width: 52px;
+  height: 52px;
   border-radius: var(--radius-full);
   background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36px;
+  font-size: 24px;
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
@@ -354,7 +364,7 @@ async function handleFileChange(event) {
 }
 
 .avatar-fallback {
-  font-size: 36px;
+  font-size: 24px;
   line-height: 1;
 }
 
@@ -377,16 +387,21 @@ async function handleFileChange(event) {
 
 .avatar-overlay__text {
   color: #fff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-align: center;
   line-height: 1.3;
 }
 
+.avatar-overlay__icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
 .avatar-spinner {
   position: absolute;
-  inset: 3px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  inset: 2px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
@@ -397,98 +412,154 @@ async function handleFileChange(event) {
 }
 
 .profile-card__name {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   margin: 0;
 }
 
 .profile-card__email {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  opacity: 0.9;
+  opacity: 0.85;
   margin: 2px 0 0;
 }
 
-.profile-card__body {
-  padding: var(--space-3) var(--space-4);
+.child-info-card {
+  padding: var(--space-1) var(--space-4);
 }
 
-.profile-row {
+.child-info-row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 12px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.profile-row:last-child {
+.child-info-row--last {
   border-bottom: none;
 }
 
-.profile-row--age {
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.profile-row__icon {
+.child-info-row__icon {
   font-size: 18px;
   width: 28px;
   text-align: center;
   flex-shrink: 0;
 }
 
-.profile-row__label {
-  font-size: 16px;
+.child-info-row__label {
+  font-size: 15px;
   font-weight: 600;
   color: var(--color-text-secondary);
-  flex: 1;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
-.profile-row__value {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  text-align: right;
-  white-space: nowrap;
-}
-
-.profile-row__input {
+.child-info-row__input {
+  margin-left: auto;
   max-width: 160px;
   padding: 8px 10px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   text-align: right;
   border-radius: var(--radius-sm);
   min-height: 0;
 }
 
-.profile-row__input--date {
-  max-width: 150px;
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.profile-row__gender {
+.child-info-row__right {
+  margin-left: auto;
   display: flex;
-  gap: var(--space-2);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
 }
 
-.gender-btn {
+.child-info-row__age {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0EA5E9;
+  white-space: nowrap;
+}
+
+.child-info-row__gender {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.gender-pill {
   padding: 6px 14px;
-  border-radius: var(--radius-full);
-  border: 1.5px solid var(--color-border-subtle);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
   background: transparent;
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.15s;
+  line-height: 1.3;
 }
 
-.gender-btn--active {
-  background: #0EA5E9;
-  border-color: #0EA5E9;
-  color: #fff;
+.gender-pill--active {
+  background: #EFF6FF;
+  border-color: #93C5FD;
+  color: #0284C7;
+}
+
+.stats-section {
+  display: flex;
+  gap: 10px;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.stats-card {
+  flex: 1;
+  padding: 14px 12px;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stats-card--green {
+  background: #F0FDF4;
+}
+
+.stats-card--blue {
+  background: #EFF6FF;
+}
+
+.stats-card__label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.stats-card--green .stats-card__label {
+  color: #15803D;
+}
+
+.stats-card--blue .stats-card__label {
+  color: #0369A1;
+}
+
+.stats-card__value {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.stats-card--green .stats-card__value {
+  color: #15803D;
+}
+
+.stats-card--blue .stats-card__value {
+  color: #0369A1;
+}
+
+.stats-card__unit {
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .upgrade-card {
@@ -523,6 +594,12 @@ async function handleFileChange(event) {
 
 .upgrade-card__cta {
   margin-top: var(--space-2);
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--color-border-subtle);
+  margin: var(--space-4) 0;
 }
 
 .profile-logout {

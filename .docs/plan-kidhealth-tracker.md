@@ -21,7 +21,8 @@
 | M8 | Vercel deploy + env | Production env, preview env, smoke test | 0.5 |
 | M9 | QA / UAT | Test matrix, Supabase test users, UAT pass | 1.5 |
 | M17 | **Guest Mode** (v2.0.0) | Guest auth, localStorage data layer, guest UI, data migration | **2.0** |
-| **Total** | | | **~13 days** |
+| M18 | **UI Redesign — Profile** (v3.0.0) | Profile page redesigned per new mockup, child info card, stats cards, danger outlined logout | **1.0** |
+| **Total** | | | **~14 days** |
 
 ---
 
@@ -524,6 +525,100 @@ Guest Mode แบ่งเป็น 3 ส่วนหลัก:
 
 ---
 
+### Phase 7d — UI Redesign — Profile page (M18, v3.0.0)
+
+**Goal:** ปรับโฉมหน้า Profile page ตาม mockup ใหม่ — child info card แบบ table layout, stats cards, gender pill toggle, logout button แบบ danger outlined
+
+**Est:** 1.0 day
+
+#### Architecture Changes
+
+```
+┌────────────────────────────────────┐
+│ gradient: 135deg #0EA5E9 → #6366F1 │  ← profile card header (เดิมอยู่แล้ว)
+│  ┌──┐   คุณแม่มนัสนันท์            │      เพิ่ม avatar edit overlay
+│  │👩│   manat@email.com            │
+│  │✏️│                              │
+│  └──┘                              │
+└────────────────────────────────────┘
+
+┌─── ข้อมูลลูก ──────────────────────┐  ← card (ใหม่: table layout)
+│ 👶 ชื่อเล่น     [input]           │  ← label เปลี่ยนจาก "ชื่อลูก" → "ชื่อเล่น"
+│ 🎂 วันเกิด      [date input]      │  ← แสดงอายุใต้ input
+│ ⚤ เพศ          [👧/👦 pill]      │  ← gender toggle → pill design
+└────────────────────────────────────┘
+
+┌─── สถิติ ──────────────────────────┐  ← NEW: 2-column stats cards
+│  📊 บันทึกเดือนนี้ 45 วัน          │
+│  🔥 ติดต่อกัน 12 วัน 🎉           │
+└────────────────────────────────────┘
+
+[ บันทึก ]   ← primary (#0EA5E9) — คงเดิม
+
+[ ออกจากระบบ ]   ← changed: solid danger → danger outlined (bg #fff, border #FCA5A5, text #EF4444)
+```
+
+#### Tasks
+
+**M18.1 — ProfilePage template update:**
+- ปรับ child info section จาก input list → table layout card (icon + label | input)
+- เปลี่ยน label "ชื่อลูก" → "ชื่อเล่น"
+- ย้าย age display ไปอยู่ใต้ birthday input (text #0EA5E9/11px)
+- ปรับ gender selector เป็น pill toggle (selected: bg #EFF6FF, border #93C5FD, text #0284C7)
+- เพิ่ม stats section 2-column (ซ้าย: "บันทึกเดือนนี้", ขวา: "ติดต่อกัน")
+- ปรับ logout button → danger outlined (bg #fff, border #FCA5A5, text #EF4444)
+
+**Files:** `src/pages/ProfilePage.vue`
+
+**M18.2 — ProfilePage style updates:**
+- Gender pill toggle styles (selected/unselected)
+- Stats card styles (green tint bg, blue tint bg)
+- Danger outlined button styles (ถ้ายังไม่มีใน button.css)
+- Child info card table layout spacing
+
+**Files:** `src/styles/components/button.css`, `src/pages/ProfilePage.vue`
+
+**M18.3 — Streak calculation (ติดต่อกัน):**
+- Compute number of consecutive log days going backward from today
+- Reset count when a day is missing
+- รวมใน profile store หรือ compute ใน component
+
+**Files:** `src/stores/logs.js` หรือ `src/pages/ProfilePage.vue`
+
+**M18.4 — Update design doc:**
+- อัปเดต `.docs/design.md` section 8.4 และ 6.3 (logout variant) ตาม mockup ใหม่
+
+**Files:** `.docs/design.md`
+
+**M18.5 — Bump version to 3.0.0:**
+- `package.json` version → `3.0.0`
+- Commit พร้อม tag `v3.0.0`
+
+**Files:** `package.json`
+
+#### Files Modified
+
+| File | Change |
+|------|--------|
+| `src/pages/ProfilePage.vue` | Child info card, stats section, gender pill, logout style |
+| `src/styles/components/button.css` | Danger outlined variant (ถ้ายังไม่มี) |
+| `src/stores/logs.js` | Streak calculation helper |
+| `.docs/design.md` | Sync section 8.4, 6.3 with mockup |
+| `package.json` | Bump version → 3.0.0 |
+
+#### Acceptance Criteria
+
+1. Profile page child info แสดงเป็น card มี 3 แถว: ชื่อเล่น, วันเกิด (พร้อมอายุ), เพศ (pill)
+2. Gender pill: selected state มี bg #EFF6FF, border #93C5FD, text #0284C7
+3. Stats cards: ซ้าย "บันทึกเดือนนี้" (bg #F0FDF4), ขวา "ติดต่อกัน" (bg #EFF6FF)
+4. Logout button: white bg, red border (#FCA5A5), red text (#EF4444)
+5. Age format: "X ปี Y เดือน" / "X เดือน" / "X วัน"
+6. Streak calculation ถูกต้อง (นับย้อนหลังจากวันนี้, ขาด→reset)
+7. Child info card มี border-subtle + shadow-subtle ตาม card pattern
+8. Profile card header gradient ยังเหมือนเดิม (#0EA5E9 → #6366F1)
+
+---
+
 ### Phase 8 — Deploy to Vercel (M8)
 **Goal:** Production deploy with separate dev preview.
 
@@ -852,6 +947,7 @@ await supabase
 | 17 | M15 (v1.4.3: Avatar cache-busting + HEIC) |
 | 18 | M16 (v1.4.4: iOS PWA PDF multi-page slicing) |
 | 19 | M17 (v2.0.0: Guest Mode — auth, localStorage, UI, migration) |
+| 20 | M18 (v3.0.0: UI Redesign — Profile page, child info card, stats, danger outlined logout) |
 
 ---
 
@@ -897,3 +993,4 @@ await supabase
 | 1.4.3 | Bug fix: avatar cache-busting (`?t={timestamp}`) + iOS HEIC→JPEG support |
 | 1.4.4 | Bug fix: iOS PWA html2canvas full capture + multi-page PDF slicing |
 | 2.0.0 | Guest Mode: ทดลองใช้งานโดยไม่ต้องสมัคร, localStorage data layer, Guest→Registered data migration |
+| 3.0.0 | **UI Redesign — Profile page**: child info card table layout, stats cards (บันทึกเดือนนี้ + ติดต่อกัน), gender pill toggle, logout danger outlined |
