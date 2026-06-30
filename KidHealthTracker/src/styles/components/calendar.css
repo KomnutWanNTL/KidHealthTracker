@@ -48,6 +48,10 @@
   outline-offset: -2px;
 }
 
+.dark .calendar__cell--today {
+  outline-color: #38BDF8;
+}
+
 .calendar__cell--future {
   opacity: 0.25;
   background: transparent;

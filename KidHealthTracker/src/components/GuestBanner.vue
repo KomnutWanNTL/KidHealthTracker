@@ -26,6 +26,11 @@ const auth = useAuthStore()
   margin-bottom: var(--space-4);
 }
 
+.dark .guest-banner {
+  background: rgba(217, 119, 6, 0.15);
+  border-color: rgba(217, 119, 6, 0.3);
+}
+
 .guest-banner__content {
   display: flex;
   align-items: center;
@@ -51,9 +56,17 @@ const auth = useAuthStore()
   color: #92400E;
 }
 
+.dark .guest-banner__text strong {
+  color: #FDE68A;
+}
+
 .guest-banner__text span {
   font-size: 11px;
   color: #A16207;
+}
+
+.dark .guest-banner__text span {
+  color: #FCD34D;
 }
 
 .guest-banner__cta {
@@ -65,7 +78,15 @@ const auth = useAuthStore()
   text-underline-offset: 2px;
 }
 
+.dark .guest-banner__cta {
+  color: #FBBF24;
+}
+
 .guest-banner__cta:hover {
   color: #B45309;
+}
+
+.dark .guest-banner__cta:hover {
+  color: #F59E0B;
 }
 </style>

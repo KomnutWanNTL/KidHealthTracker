@@ -8,6 +8,7 @@
     <link rel="apple-touch-icon" href="/pwa-icon-v2.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#F8FAFC" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -35,13 +36,30 @@
         min-height: 100vh;
         background: #F8FAFC;
       }
+      .dark .app-loading {
+        background: #0F172A;
+      }
       .app-loading__text {
         color: #94A3B8;
         font-size: 14px;
         font-weight: 600;
         font-family: system-ui, -apple-system, sans-serif;
       }
+      .dark .app-loading__text {
+        color: #64748B;
+      }
     </style>
+    <script>
+      (function() {
+        var stored = localStorage.getItem('kidhealth-dark-mode');
+        var dark;
+        if (stored === 'on') dark = true;
+        else if (stored === 'off') dark = false;
+        else dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) document.documentElement.classList.add('dark');
+        document.querySelector('meta[name="theme-color"]').content = dark ? '#0F172A' : '#F8FAFC';
+      })();
+    </script>
     <title>KidHealth Tracker</title>
   </head>
   <body>

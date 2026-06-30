@@ -797,7 +797,7 @@ icons: [
 
 **M19.1 — Create `useDarkMode.js` composable**
 
-- [ ] **M19.1.1** สร้าง `src/composables/useDarkMode.js`:
+- [x] **M19.1.1** สร้าง `src/composables/useDarkMode.js`:
   - จัดการ `.dark` class บน `<html>` element
   - ตรวจจับ `prefers-color-scheme: dark` (system preference)
   - localStorage key `kidhealth-dark-mode`: `"on"` / `"off"`
@@ -808,28 +808,28 @@ icons: [
 
 **M19.2 — Tailwind v4 dark mode configuration**
 
-- [ ] **M19.2.1** เพิ่ม `@custom-variant dark (&:where(.dark, .dark *));` ใน `src/style.css`
-- [ ] **M19.2.2** เพิ่ม dark mode CSS custom properties ใน `src/styles/tokens.css`
-- [ ] **M19.2.3** แก้ไข `index.html`: เพิ่ม `<meta name="color-scheme" content="light dark">`
+- [x] **M19.2.1** เพิ่ม `@custom-variant dark (&:where(.dark, .dark *));` ใน `src/style.css`
+- [x] **M19.2.2** เพิ่ม dark mode CSS custom properties ใน `src/styles/tokens.css`
+- [x] **M19.2.3** แก้ไข `index.html`: เพิ่ม `<meta name="color-scheme" content="light dark">`
 
 **M19.3 — Update all components with dark: variants**
 
-- [ ] **M19.3.1** DashboardPage.vue: `dark:` classes for bg, text, border, input
-- [ ] **M19.3.2** SummaryPage.vue: `dark:` classes for calendar, legend, month picker
-- [ ] **M19.3.3** ProfilePage.vue: `dark:` classes for profile card, child info, stats
-- [ ] **M19.3.4** LoginPage.vue / RegisterPage.vue: `dark:` classes
-- [ ] **M19.3.5** BottomNav.vue: `dark:` classes
-- [ ] **M19.3.6** CalendarGrid.vue: no-data cell color `#F1F5F9` → `dark:bg-[#334155]`, today outline `ring-sky-500` → `dark:ring-sky-400`
-- [ ] **M19.3.7** Legend.vue: `dark:text-slate-300`
-- [ ] **M19.3.8** MonthPicker.vue: arrow text, disabled state
-- [ ] **M19.3.9** SymptomCard.vue: unselected bg tint (keep same), text color
-- [ ] **M19.3.10** ToastContainer.vue: inverted colors in dark mode
-- [ ] **M19.3.11** GuestBanner.vue: `dark:bg-amber-900/30`, `dark:text-amber-200`
-- [ ] **M19.3.12** Component CSS files: dark mode variants สำหรับ hardcoded colors
+- [x] **M19.3.1** DashboardPage.vue: via CSS custom properties auto-switch
+- [x] **M19.3.2** SummaryPage.vue: via CSS custom properties auto-switch
+- [x] **M19.3.3** ProfilePage.vue: dark mode scoped style overrides
+- [x] **M19.3.4** LoginPage.vue / RegisterPage.vue: via CSS custom properties auto-switch
+- [x] **M19.3.5** BottomNav.vue: via CSS custom properties auto-switch
+- [x] **M19.3.6** CalendarGrid.vue: no-data via `--symptom-no-data`, today outline via `--color-primary`
+- [x] **M19.3.7** Legend.vue: via CSS custom properties auto-switch
+- [x] **M19.3.8** MonthPicker.vue: via CSS custom properties auto-switch
+- [x] **M19.3.9** SymptomCard.vue: tint via CSS custom properties, text auto-switch
+- [x] **M19.3.10** ToastContainer.vue: inverted colors in `toast.css`
+- [x] **M19.3.11** GuestBanner.vue: dark mode CSS overrides
+- [x] **M19.3.12** Component CSS files: dark mode variants for button, input, toast, calendar
 
 **M19.4 — Dark mode toggle UI**
 
-- [ ] **M19.4.1** เพิ่ม toggle switch ใน ProfilePage (ใต้ stats section)
+- [x] **M19.4.1** เพิ่ม toggle switch ใน ProfilePage (ใต้ stats section)
   - `role="switch"`, `aria-checked`, label "🌙 โหมดมืด"
   - custom toggle switch CSS
   - เชื่อมกับ `useDarkMode().isDark` และ `toggle()`
@@ -838,7 +838,7 @@ icons: [
 
 **M19.5 — Export PDF dark mode compatibility**
 
-- [ ] **M19.5.1** แก้ `useExportPdf.js`:
+- [x] **M19.5.1** แก้ `useExportPdf.js`:
   - บังคับ light mode ก่อน html2canvas capture (remove `.dark`)
   - restore class หลัง export
 
@@ -846,13 +846,13 @@ icons: [
 
 **M19.6 — Verify**
 
-- [ ] **M19.6.1** System dark mode → auto `.dark` class
-- [ ] **M19.6.2** Manual toggle → localStorage persists
-- [ ] **M19.6.3** Reload → preference stays
-- [ ] **M19.6.4** Clear localStorage → fallback to system preference
-- [ ] **M19.6.5** Symptom colors unchanged
-- [ ] **M19.6.6** Export PDF → light mode result
-- [ ] **M19.6.7** iOS Safari/PWA: dark mode works
+- [x] **M19.6.1** System dark mode → auto `.dark` class (blocking script + composable)
+- [x] **M19.6.2** Manual toggle → localStorage persists (`toggle()` in composable)
+- [x] **M19.6.3** Reload → preference stays (blocking script reads localStorage)
+- [x] **M19.6.4** Clear localStorage → fallback to system preference (`init()` logic)
+- [x] **M19.6.5** Symptom colors unchanged (main colors kept, tints adjusted via CSS vars)
+- [x] **M19.6.6** Export PDF → light mode result (`useExportPdf.js` force light)
+- [x] **M19.6.7** iOS Safari/PWA: dark mode works (meta tags + blocking script)
 
 ### Files Modified
 

@@ -3,18 +3,28 @@ import { jsPDF } from 'jspdf'
 
 export function useExportPdf() {
   async function exportCalendar(element, yearMonth) {
-    // Capture full element content — explicitly pass scroll dimensions so
-    // html2canvas works correctly on iOS PWA (otherwise it only captures
-    // the visible viewport, cutting off bottom rows of CalendarGrid + Legend)
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      backgroundColor: '#ffffff',
-      useCORS: true,
-      height: element.scrollHeight,
-      width: element.scrollWidth,
-      windowHeight: element.scrollHeight,
-      windowWidth: element.scrollWidth,
-    })
+    // Temporarily switch to light mode for clean PDF capture
+    const html = document.documentElement
+    const hadDark = html.classList.contains('dark')
+    html.classList.remove('dark')
+
+    const meta = document.querySelector('meta[name="theme-color"]')
+    const prevTheme = meta?.content
+    if (meta) meta.content = '#F8FAFC'
+
+    try {
+      // Capture full element content — explicitly pass scroll dimensions so
+      // html2canvas works correctly on iOS PWA (otherwise it only captures
+      // the visible viewport, cutting off bottom rows of CalendarGrid + Legend)
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        height: element.scrollHeight,
+        width: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        windowWidth: element.scrollWidth,
+      })
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const pageWidth = pdf.internal.pageSize.getWidth()
@@ -58,6 +68,11 @@ export function useExportPdf() {
     }
 
     pdf.save(`kidhealth-${yearMonth}.pdf`)
+    } finally {
+      // Restore dark mode if it was active
+      if (hadDark) html.classList.add('dark')
+      if (meta && prevTheme) meta.content = prevTheme
+    }
   }
 
   return { exportCalendar }
