@@ -22,7 +22,9 @@
 | M9 | QA / UAT | Test matrix, Supabase test users, UAT pass | 1.5 |
 | M17 | **Guest Mode** (v2.0.0) | Guest auth, localStorage data layer, guest UI, data migration | **2.0** |
 | M18 | **UI Redesign — Profile** (v3.0.0) | Profile page redesigned per new mockup, child info card, stats cards, danger outlined logout | **1.0** |
-| **Total** | | | **~14 days** |
+| M19 | **Dark Mode** (v4.0.0) | Dark mode composable, `dark:` variants, CSS tokens, toggle UI, system pref detection | **1.0** |
+| M20 | **Forgot Password** (v4.0.0) | ForgotPasswordPage, ResetPasswordPage, auth store recovery, Supabase config | **0.5** |
+| **Total** | | | **~15.5 days** |
 
 ---
 
@@ -619,6 +621,171 @@ Guest Mode แบ่งเป็น 3 ส่วนหลัก:
 
 ---
 
+### Phase 7e — Dark Mode (M19, v4.0.0)
+
+**Goal:** ให้แอพรองรับ Dark Mode โดยผู้ใช้สามารถเลือกเองได้ (manual toggle) และตรวจจับค่าเริ่มต้นจากระบบปฏิบัติการ
+
+**Est:** 1.0 day
+
+#### Tasks
+
+**M19.1 — Create `useDarkMode.js` composable:**
+- สร้าง `src/composables/useDarkMode.js`
+- จัดการ `.dark` class บน `<html>` element
+- ตรวจจับ `prefers-color-scheme: dark` (system preference)
+- บันทึก/อ่านค่า preference จาก localStorage (key: `kidhealth-dark-mode`)
+- ให้ความสำคัญกับ manual toggle > system preference
+- อัปเดต `<meta name="theme-color">` ตาม mode
+
+**Files:** `src/composables/useDarkMode.js`
+
+**M19.2 — Tailwind v4 dark mode config:**
+- เพิ่ม `@custom-variant dark (&:where(.dark, .dark *));` ใน `style.css`
+- เพิ่ม dark mode CSS custom properties override ใน `tokens.css`
+- แก้ไข `index.html`: เพิ่ม `<meta name="color-scheme" content="light dark">`
+
+**Files:** `src/style.css`, `src/styles/tokens.css`, `index.html`
+
+**M19.3 — Update all components with `dark:` variants:**
+- ใช้ `dark:` utility class ในทุก component template:
+  - Background (`bg-white` → `dark:bg-slate-800`)
+  - Text (`text-slate-700` → `dark:text-slate-200`)
+  - Border (`border-slate-200` → `dark:border-slate-700`)
+- Input, button, card, nav, calendar, toast, legend, symptom card
+- Symptom colors: **คงเดิม** (ไม่เปลี่ยน)
+- Calendar no-data cell: `bg-[#F1F5F9]` → `dark:bg-[#334155]`
+- Toast: กลับสี (`bg-slate-900 text-white` → `dark:bg-white dark:text-slate-900`)
+- Guest Banner: `bg-amber-50` → `dark:bg-amber-900/30`
+- Today outline: `ring-sky-500` → `dark:ring-sky-400`
+
+**Files:** `src/pages/*.vue`, `src/components/*.vue`, `src/styles/components/*.css`
+
+**M19.4 — Dark Mode Toggle UI:**
+- เพิ่ม toggle switch ใน ProfilePage (ใต้ stats section)
+- `role="switch"`, `aria-checked` ตาม accessibility
+- Label: "🌙 โหมดมืด"
+- style: custom toggle switch
+
+**Files:** `src/pages/ProfilePage.vue`
+
+**M19.5 — Export PDF Dark Mode Compatibility:**
+- แก้ `useExportPdf.js` — บังคับ light mode ก่อน capture แล้ว restore หลัง export
+- ป้องกัน PDF มีพื้นหลังสีดำ
+
+**Files:** `src/composables/useExportPdf.js`
+
+**M19.6 — PWA theme-color:**
+- อัปเดต `<meta name="theme-color">` ตาม mode
+- light: `#F8FAFC`, dark: `#0F172A`
+
+**Files:** `src/composables/useDarkMode.js`
+
+#### Files Modified
+
+| File | Change |
+|------|--------|
+| `src/composables/useDarkMode.js` | **New** |
+| `src/composables/useExportPdf.js` | dark→light override |
+| `src/style.css` | `@custom-variant dark` |
+| `src/styles/tokens.css` | Dark mode CSS properties |
+| `src/styles/components/*.css` | Dark mode variants |
+| `src/pages/ProfilePage.vue` | Dark mode toggle |
+| `src/pages/*.vue` | `dark:` classes |
+| `src/components/*.vue` | `dark:` classes |
+| `index.html` | `color-scheme` meta |
+
+#### Acceptance Criteria
+
+1. เปิดแอพในระบบ Dark Mode → `.dark` class ถูกเพิ่มอัตโนมัติ
+2. กด toggle "โหมดมืด" → class สลับ → localStorage บันทึกค่า
+3. Refresh หน้า → ค่า preference ยังคงเดิม
+4. Clear localStorage → กลับไปใช้ system preference
+5. Symptom colors ไม่เปลี่ยนแปลงใน Dark Mode
+6. ทุก component แสดงถูกต้องใน Dark Mode
+7. Calendar no-data cell เปลี่ยนเป็น `#334155`
+8. Export PDF ออกมาเป็น light mode เสมอ
+9. PWA theme-color เปลี่ยนตาม mode
+10. iOS Safari/PWA: dark mode ทำงาน
+
+---
+
+### Phase 7f — Forgot Password (M20, v4.0.0)
+
+**Goal:** ให้ผู้ใช้สามารถรีเซ็ตรหัสผ่านด้วยตนเองผ่านหน้า UI
+
+**Est:** 0.5 day
+
+#### Tasks
+
+**M20.1 — Auth Store: recovery state & actions:**
+- เพิ่ม `state.isPasswordRecovery` (bool, default false)
+- เพิ่ม `action resetPassword(email)` → `supabase.auth.resetPasswordForEmail()`
+- เพิ่ม `action updatePassword(password)` → `supabase.auth.updateUser()`
+- อัปเดต `onAuthStateChange`: ตรวจจับ `PASSWORD_RECOVERY` event
+- reset `isPasswordRecovery` เมื่อ `SIGNED_OUT`
+
+**Files:** `src/stores/auth.js`
+
+**M20.2 — Create ForgotPasswordPage:**
+- หน้า `/forgot-password` — กรอก email
+- onSubmit → `auth.resetPassword(email)` → success state
+- Security: ไม่บอกว่า email มีอยู่จริงหรือไม่
+- Link "กลับไปหน้า Login"
+- Loading state, error toast
+- ถ้ามี session → redirect `/dashboard`
+
+**Files:** `src/pages/ForgotPasswordPage.vue`
+
+**M20.3 — Create ResetPasswordPage:**
+- หน้า `/reset-password` — ตั้งรหัสผ่านใหม่
+- ตรวจจับ recovery session (PASSWORD_RECOVERY event)
+- ถ้าไม่มี recovery session → redirect `/forgot-password` + error toast
+- form: password ใหม่ + ยืนยัน, validate length ≥ 8
+- onSubmit → `auth.updatePassword(password)` → success toast → redirect `/login`
+- ถ้ามี session ปกติ → redirect `/dashboard`
+
+**Files:** `src/pages/ResetPasswordPage.vue`
+
+**M20.4 — Router: เพิ่ม routes + guard:**
+- Routes: `/forgot-password`, `/reset-password`
+- Guard: `if (/forgot-password && session) redirect /dashboard`
+- ResetPasswordPage: guard ปล่อยผ่าน — ตรวจสอบ recovery ใน component
+
+**Files:** `src/router/index.js`
+
+**M20.5 — Supabase Configuration:**
+- ตั้งค่า Redirect URLs ใน Supabase Dashboard: เพิ่ม `${origin}/reset-password`
+- ตรวจสอบ email template "Reset Password"
+- ตรวจสอบว่า "Confirm email" เปิดอยู่
+
+**Files:** (Supabase Dashboard — ไม่มี code change)
+
+#### Files Modified
+
+| File | Change |
+|------|--------|
+| `src/pages/ForgotPasswordPage.vue` | **New** |
+| `src/pages/ResetPasswordPage.vue` | **New** |
+| `src/router/index.js` | 2 routes + guard |
+| `src/stores/auth.js` | `isPasswordRecovery`, `resetPassword()`, `updatePassword()` |
+
+#### Acceptance Criteria
+
+1. Login page มี link "ลืมรหัสผ่าน?"
+2. คลิก → ไป `/forgot-password`
+3. กรอก email → success message แสดง
+4. อีเมลที่ลงทะเบียนได้รับ link reset จริง
+5. คลิก link → ไป `/reset-password#access_token=...`
+6. แสดง form ตั้งรหัสผ่านใหม่
+7. กรอกรหัสผ่านใหม่ + ยืนยัน → success toast → redirect `/login`
+8. Login ด้วยรหัสผ่านใหม่ → เข้าระบบได้
+9. Login ด้วยรหัสผ่านเก่า → error
+10. recovery link หมดอายุ → redirect `/forgot-password` + error toast
+11. มี session อยู่แล้วที่ `/forgot-password` → redirect `/dashboard`
+12. ไม่บอก user ว่า email มีในระบบหรือไม่
+
+---
+
 ### Phase 8 — Deploy to Vercel (M8)
 **Goal:** Production deploy with separate dev preview.
 
@@ -722,12 +889,14 @@ KidHealthTracker/
     │   ├── logs.js           # fetchForDate, fetchMonth, upsertLog
     │   └── profile.js        # fetch, update, uploadAvatar
     ├── pages/
-    │   ├── LoginPage.vue
-    │   ├── RegisterPage.vue  # first_name + last_name fields
-    │   ├── VerifyEmailPage.vue
-    │   ├── DashboardPage.vue # date picker, 6 symptom cards, avatar header
-    │   ├── SummaryPage.vue   # month picker, calendar, legend, export PDF
-    │   └── ProfilePage.vue   # profile card, avatar upload, child info, gender, age
+│   ├── LoginPage.vue
+│   ├── RegisterPage.vue  # first_name + last_name fields
+│   ├── VerifyEmailPage.vue
+│   ├── ForgotPasswordPage.vue  # forgot password form (v4.0.0)
+│   ├── ResetPasswordPage.vue   # set new password form (v4.0.0)
+│   ├── DashboardPage.vue # date picker, 6 symptom cards, avatar header
+│   ├── SummaryPage.vue   # month picker, calendar, legend, export PDF
+│   └── ProfilePage.vue   # profile card, avatar upload, child info, gender, age
     ├── components/
     │   ├── BottomNav.vue     # 3-tab bottom navigation
     │   ├── CalendarGrid.vue  # 7-col color-coded calendar
@@ -736,6 +905,7 @@ KidHealthTracker/
     │   ├── SymptomCard.vue   # colored radio card with emoji
     │   └── ToastContainer.vue
     ├── composables/
+    │   ├── useDarkMode.js    # dark mode toggle + system preference detection (v4.0.0)
     │   ├── useExportPdf.js   # html2canvas + jsPDF (iOS full capture + multi-page)
     │   └── useToast.js       # global toast state
     ├── constants/
@@ -918,8 +1088,8 @@ await supabase
   - [ ] No multi-child profile
   - [ ] No push notification
   - [ ] No CSV export
-  - [ ] No dark mode
-  - [ ] No "forgot password" custom UI (Supabase default works)
+- [ ] ~~No dark mode~~ ✅ มีแล้ว (v4.0.0)
+- [ ] ~~No "forgot password" custom UI~~ ✅ มีแล้ว (v4.0.0)
 
 ---
 
@@ -948,6 +1118,8 @@ await supabase
 | 18 | M16 (v1.4.4: iOS PWA PDF multi-page slicing) |
 | 19 | M17 (v2.0.0: Guest Mode — auth, localStorage, UI, migration) |
 | 20 | M18 (v3.0.0: UI Redesign — Profile page, child info card, stats, danger outlined logout) |
+| 21 | M19 (v4.0.0: Dark Mode — composable, CSS tokens, `dark:` variants, toggle) |
+| 22 | M20 (v4.0.0: Forgot Password — 2 new pages, auth recovery, route guard) |
 
 ---
 
