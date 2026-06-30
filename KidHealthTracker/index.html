@@ -16,11 +16,40 @@
     <meta name="application-name" content="KidHealth Tracker" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://qkgpacyhjuexhbcsyyxo.supabase.co" />
+    <link rel="preconnect" href="https://vitals.vercel-insights.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all';this.onload=null"
+    />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    </noscript>
+    <style>
+      .app-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #F8FAFC;
+      }
+      .app-loading__text {
+        color: #94A3B8;
+        font-size: 14px;
+        font-weight: 600;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+    </style>
     <title>KidHealth Tracker</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div class="app-loading">
+        <p class="app-loading__text">กำลังโหลด...</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
