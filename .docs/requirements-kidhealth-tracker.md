@@ -354,26 +354,31 @@ flowchart LR
 
 **Elements:**
 - Header: eyebrow "โปรไฟล์" + heading "บัญชีของคุณ"
-- Profile card (gradient header):
-  - Avatar (รูป upload หรือ 👩 fallback)
-  - ปุ่มเปลี่ยนรูปโปรไฟล์ (ถ่ายรูป / เลือกจากคลัง)
-  - ชื่อ-นามสกุล (จาก profiles.first_name + profiles.last_name)
-  - Email
-- Profile body:
-- แก้ไขชื่อลูก (child_name) → text input
-- แก้ไขวันเกิดลูก (child_birthday) → date input (:max = วันนี้)
-- เลือกเพศลูก (child_gender) → toggle button 👦 ชาย / 👧 หญิง
-- แสดงอายุลูก คำนวณจาก child_birthday อัตโนมัติ (เช่น "อายุ 2 ปี 3 เดือน 5 วัน")
-  - แสดงจำนวนวันที่บันทึก (เดือนนี้)
-- ปุ่ม "บันทึก" สำหรับ child_name / child_birthday
-- ปุ่ม "ออกจากระบบ" (สีแดง)
+- Profile card (gradient header `135deg #0EA5E9 → #6366F1`):
+  - Avatar 52×52px (รูป upload หรือ 👩 fallback) + ปุ่มแก้ไข overlay
+  - ชื่อ-นามสกุล (from profiles.first_name + profiles.last_name) — 16px/800 #fff
+  - Email — 12px rgba(255,255,255,0.85)
+- Child info card (bg #fff, border-subtle, shadow-subtle):
+  - 👶 ชื่อเล่น (child_name) → text input
+  - 🎂 วันเกิด (child_birthday) → date input (:max = วันนี้, แสดงอายุอัตโนมัติใต้ label)
+    - อายุ format: "2 ปี 3 เดือน" (#0EA5E9/600/11px) หรือ "8 เดือน" (ถ้า < 2 ปี) หรือ "15 วัน" (ถ้า < 1 เดือน)
+  - ⚤ เพศ (child_gender) → gender pill toggle 👧 หญิง / 👦 ชาย
+    - Selected: bg #EFF6FF, border #93C5FD, text #0284C7, border-radius 8px
+    - Unselected: transparent bg, border --color-border
+- Stats section (2 คอลัมน์ flex, gap 10px):
+  - ซ้าย: bg #F0FDF4, "📊 บันทึกเดือนนี้" + จำนวนวัน
+  - ขวา: bg #EFF6FF, "🔥 ติดต่อกัน" + streak จำนวนวัน 🎉
+- ปุ่ม "บันทึก" — primary (#0EA5E9) สำหรับ child_name / child_birthday
+- ปุ่ม "ออกจากระบบ" — danger outlined (bg #fff, border #FCA5A5, text #EF4444)
 
 **Business Rules:**
 - โหลด profile จากตาราง `profiles` ตาม `user_id`
 - ถ้ายังไม่มี profile → สร้าง record ใหม่จาก user_metadata ตอน signUp
 - child_name, child_birthday และ child_gender สามารถแก้ไขได้ตลอด
 - child_birthday → อายุจะอัปเดตอัตโนมัติที่ frontend (คำนวณจากวันที่ปัจจุบัน เทียบกับ child_birthday)
-- แสดงอายุเป็น "X ปี Y เดือน Z วัน" หรือ "X ปี Y เดือน" หรือ "X เดือน" (ถ้าอายุ < 2 ปี) หรือ "X วัน" (ถ้าอายุ < 1 เดือน)
+- แสดงอายุเป็น "X ปี Y เดือน" หรือ "X เดือน" (ถ้าอายุ < 2 ปี) หรือ "X วัน" (ถ้าอายุ < 1 เดือน)
+- Streak "ติดต่อกัน": นับจำนวนวันที่บันทึกติดต่อกันย้อนหลังจากปัจจุบัน (ถ้าขาด → reset)
+- "บันทึกเดือนนี้": นับจำนวนวันที่มี log ในเดือนปัจจุบัน
 
 **Avatar Upload (v1.4.0):**
 - ผู้ใช้สามารถอัปโหลดรูปโปรไฟล์ได้จากหน้า Profile (คลิกที่ avatar หรือปุ่มเปลี่ยนรูป)

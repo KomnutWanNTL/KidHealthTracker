@@ -202,8 +202,17 @@ padding: 13px
 **Loading:** ข้อความเปลี่ยน เช่น "กำลังเข้าสู่ระบบ..." + ปิด pointer events
 
 **Variant ตามบริบท:**
-- Logout → `background: --color-danger`
+- Logout → ใช้ **Danger Outlined** style
 - Export PDF → `background: --color-export`
+
+**Danger Outlined (logout)**
+```
+background: #fff
+border: 1.5px solid --symptom-fever-runny-clear-border (#FCA5A5)
+color: --color-danger (#EF4444)
+padding: 13px
+border-radius: --radius-lg
+```
 
 ---
 
@@ -393,26 +402,50 @@ padding: --space-4
 ### 8.4 Profile
 
 ```
-  ┌─────────────────────────────┐
-  │ gradient header             │
-  │  [👩] คุณแม่มนัสนันท์      │  ← first_name + last_name
-  │       manat@email.com       │
-  ├─────────────────────────────┤
-  │ 👶 ชื่อลูก     [น้องมีมี]   │  ← editable input
-  │ 🎂 วันเกิดลูก  [12 ม.ค. 65]│  ← date input (:max = วันนี้, แสดงอายุอัตโนมัติ)
-  │ ⚤ เพศลูก      [👦 ชาย / 👧 หญิง] │  ← gender toggle button
-  │ 📊 บันทึกเดือนนี้  45 วัน   │
-  └─────────────────────────────┘
+โปรไฟล์                     ← eyebrow (12px/700/uppercase)
+บัญชีของคุณ                  ← display heading (22px/800)
 
-  [ บันทึก ]   ← ใช้บันทึก child_name / child_birthday
-  [ ออกจากระบบ ]   ← danger red
+┌────────────────────────────────────┐
+│ gradient: 135deg #0EA5E9 → #6366F1 │  ← radius-xl, padding 20px 16px
+│  ┌──┐                             │
+│  │👩│  คุณแม่มนัสนันท์           │  ← font 16px/800 #fff
+│  │✏️│  manat@email.com            │  ← font 12px rgba(255,255,255,0.85)
+│  └──┘                             │
+│  อวาตาร์ 52×52px, ปุ่มแก้ไข overlay │
+└────────────────────────────────────┘
+
+┌─── ข้อมูลลูก ──────────────────────┐  ← card (bg #fff, border-subtle, shadow-subtle)
+│ 👶 ชื่อเล่น     [น้องมีมี]        │  ← icon + label (475569) | value (0F172A/600)
+│ 🎂 วันเกิด      [12 ม.ค. 65]     │  ← แสดงอายุใต้ label: "2 ปี 3 เดือน" (#0EA5E9/600/11px)
+│ ⚤ เพศ          [👧 หญิง]         │  ← gender เป็น pill ที่ selected อยู่แล้ว
+│                                  │     bg #EFF6FF, border #93C5FD, text #0284C7
+└────────────────────────────────────┘
+
+┌─── สถิติ ──────────────────────────┐
+│  ┌──────────────┐ ┌──────────────┐ │
+│  │ 📊 บันทึก    │ │ 🔥 ติดต่อกัน │ │  ← 2 คอลัมน์ flex, gap 10px
+│  │ เดือนนี้     │ │ 12 วัน 🎉    │ │  │
+│  │ 45 วัน       │ │              │ │
+│  └──────────────┘ └──────────────┘ │
+│  ซ้าย: bg #F0FDF4, text #15803D   │
+│  ขวา: bg #EFF6FF, text #0369A1    │
+└────────────────────────────────────┘
+
+[ บันทึก ]   ← primary button (#0EA5E9)
+
+[ ออกจากระบบ ]   ← danger outlined (bg #fff, border #FCA5A5, text #EF4444)
 ```
 
-Profile card header ใช้ gradient เดียวในแอพ (`#0EA5E9 → #6366F1`) เพื่อให้ section นี้รู้สึก "พิเศษ" กว่า card ทั่วไป
+**Profile card header** ใช้ gradient เดียวในแอพ (`#0EA5E9 → #6366F1`) เพื่อให้ section นี้รู้สึก "พิเศษ" กว่า card ทั่วไป
 
 **อายุคำนวณอัตโนมัติ:**
 - child_birthday → แสดงอายุเป็น "2 ปี 3 เดือน" หรือ "8 เดือน" (ถ้า < 2 ปี) หรือ "15 วัน" (ถ้า < 1 เดือน)
 - อัปเดตทุกครั้งที่เปิดหน้า profile และเมื่อเปลี่ยน child_birthday
+
+**Gender pill toggle:**
+- Selected pill: `background: #EFF6FF`, `border: 1px solid #93C5FD`, `color: #0284C7`, `border-radius: 8px`
+- Unselected pill: `background: transparent`, `border: 1px solid --color-border`
+- ใช้ `👧 หญิง` / `👦 ชาย` format
 
 ---
 

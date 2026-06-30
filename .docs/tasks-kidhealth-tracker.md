@@ -738,3 +738,48 @@ icons: [
 | `src/stores/profile.js` | เพิ่ม `?t=${Date.now()}` cache-busting หลัง `getPublicUrl` |
 | `src/pages/ProfilePage.vue` | เพิ่ม `image/heic,image/heif` ใน `accept`; เพิ่ม HEIC→JPEG conversion |
 | `package.json` | เพิ่ม `heic2any` dependency |
+
+---
+
+## 🎯 Milestone 18 — UI Redesign: Profile Page (v3.0.0)
+
+**Est:** 1 day
+
+### Tasks
+
+- [ ] **M18.1** ProfilePage: ปรับ child info section เป็น table layout card
+  - เปลี่ยน label "ชื่อลูก" → "ชื่อเล่น"
+  - Icon + label ด้านซ้าย | value/input ด้านขวา (border-bottom divider)
+  - Birthday: แสดงอายุใต้ input ด้วย text #0EA5E9/11px/600
+- [ ] **M18.2** ProfilePage: gender selector → pill toggle
+  - Selected: `bg #EFF6FF`, `border 1px #93C5FD`, `text #0284C7`, `border-radius 8px`
+  - Unselected: `bg transparent`, `border 1px --color-border`
+  - รูปแบบ: `👧 หญิง` / `👦 ชาย`
+- [ ] **M18.3** ProfilePage: เพิ่ม stats section 2 คอลัมน์
+  - ซ้าย: "📊 บันทึกเดือนนี้" bg `#F0FDF4`, text `#15803D`
+  - ขวา: "🔥 ติดต่อกัน" bg `#EFF6FF`, text `#0369A1`
+  - จำนวนวันแสดง 22px/800
+- [ ] **M18.4** ProfilePage: streak calculation (ติดต่อกัน)
+  - นับวันที่บันทึกติดต่อกันย้อนหลังจากปัจจุบัน
+  - ขาด 1 วัน → reset
+  - function ใน logs store หรือ computed ใน ProfilePage
+- [ ] **M18.5** ProfilePage: เปลี่ยน logout button → danger outlined
+  - `background: #fff`, `border: 1.5px solid #FCA5A5`, `color: #EF4444`
+  - เพิ่ม style ใน button.css ถ้ายังไม่มี
+- [ ] **M18.6** ProfilePage: avatar container — 52×52px, edit overlay (✏️)
+  - คลิก avatar หรือ overlay → trigger file picker
+  - รักษา upload flow เดิม (compress, HEIC→JPEG, Supabase Storage)
+- [ ] **M18.7** ProfilePage: child info card border/shadow ตาม card pattern
+  - `border-radius: --radius-xl`, `border: 1px solid --color-border-subtle`, `box-shadow: shadow-subtle`
+- [ ] **M18.8** Bump version → 3.0.0
+  - อัปเดต `package.json` version
+  - Commit พร้อม tag `v3.0.0`
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/pages/ProfilePage.vue` | Child info card layout, gender pill, stats section, logout style, avatar overlay |
+| `src/styles/components/button.css` | Danger outlined variant (`.btn--danger-outlined`) |
+| `src/stores/logs.js` | Streak calculation helper (ถ้าจำเป็น) |
+| `package.json` | Bump version `3.0.0` |
