@@ -520,9 +520,7 @@ icons: [
 
 ---
 
-## 🎯 Milestone 17 — Guest Mode (v2.0.0)
-
-**Est:** 2.0 days
+## 🎯 Milestone 17 — Guest Mode (v2.0.0) ✅
 
 ### 17.1 Auth Store — Guest State & Actions
 
